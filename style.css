@@ -1,0 +1,59 @@
+body {
+    font-family: sans-serif;
+    background: #1a1a1a;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+.editor-container {
+    position: relative;
+    border: 2px solid #edb900;
+    line-height: 0;
+}
+
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.controls {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    background: #333;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+button {
+    padding: 10px;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.btn-draw {
+    background: #edb900;
+    color: black;
+}
+
+.btn-action {
+    background: #444;
+    color: white;
+}
+
+.btn-export {
+    background: #28a745;
+    color: white;
+    grid-column: span 3;
+}
+
+input[type="file"] {
+    margin-bottom: 20px;
+}

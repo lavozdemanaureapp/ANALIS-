@@ -1,0 +1,21 @@
+{
+  "name": "Analizador Táctico La Voz de Manaure",
+  "short_name": "Táctica 92.3",
+  "description": "Herramienta de análisis deportivo para redes sociales.",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#edb900",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512.png?text=92.3FM",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analista Táctico - Radio La Voz de Manaure</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#edb900">
+
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+</head>
+<body>
+
+    <h1>Analizador Táctico Deportivo</h1>
+    
+    <input type="file" id="fileInput" accept="video/*">
+
+    <div class="editor-container" id="container">
+        <video id="videoPlayer" width="800" height="450" controls>
+            <source src="" type="video/mp4">
+        </video>
+        <canvas id="tacticCanvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <button class="btn-draw" onclick="setMode('arrow')">↗️ Flecha</button>
+        <button class="btn-draw" onclick="setMode('circle')">⭕ Círculo</button>
+        <button class="btn-draw" onclick="addText()">📝 Texto</button>
+        <button class="btn-action" onclick="deleteSelected()">🗑️ Borrar</button>
+        <button class="btn-action" onclick="clearAll()">🧹 Limpiar Todo</button>
+        <button class="btn-action" onclick="toggleCanvas()">🔓 Bloquear/Editar</button>
+        <button class="btn-export" onclick="exportImage()">📸 Exportar para Redes</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
