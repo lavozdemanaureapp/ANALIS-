@@ -2,37 +2,74 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analista Táctico - Radio La Voz de Manaure</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#edb900">
-
-    <link rel="stylesheet" href="style.css">
+    <title>Analizador Táctico - La Voz de Manaure</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        /* ESTO PEGA EL VIDRIO AL VIDEO */
+        .editor-container { position: relative; width: 800px; height: 450px; background: #000; border: 2px solid #edb900; overflow: hidden; }
+        video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10 !important; }
+        .controls { margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #333; padding: 15px; border-radius: 8px; }
+        button { padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
+        .btn-draw { background: #edb900; color: black; }
+        .btn-export { background: #28a745; color: white; grid-column: span 3; }
+    </style>
 </head>
 <body>
-
-    <h1>Analizador Táctico Deportivo</h1>
+    <h1>Analizador Táchira vs Carabobo</h1>
+    <input type="file" id="fileInput" accept="video/*" style="margin-bottom:10px;">
     
-    <input type="file" id="fileInput" accept="video/*">
-
-    <div class="editor-container" id="container">
-        <video id="videoPlayer" width="800" height="450" controls>
-            <source src="" type="video/mp4">
-        </video>
+    <div class="editor-container">
+        <video id="videoPlayer" width="800" height="450"></video>
         <canvas id="tacticCanvas"></canvas>
     </div>
 
     <div class="controls">
         <button class="btn-draw" onclick="setMode('arrow')">↗️ Flecha</button>
         <button class="btn-draw" onclick="setMode('circle')">⭕ Círculo</button>
-        <button class="btn-draw" onclick="addText()">📝 Texto</button>
-        <button class="btn-action" onclick="deleteSelected()">🗑️ Borrar</button>
-        <button class="btn-action" onclick="clearAll()">🧹 Limpiar Todo</button>
-        <button class="btn-action" onclick="toggleCanvas()">🔓 Bloquear/Editar</button>
-        <button class="btn-export" onclick="exportImage()">📸 Exportar para Redes</button>
+        <button class="btn-draw" onclick="canvas.clear()">🧹 Limpiar</button>
+        <button class="btn-export" onclick="exportImage()">📸 Descargar Jugada</button>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        const video = document.getElementById('videoPlayer');
+        const canvas = new fabric.Canvas('tacticCanvas');
+        canvas.setWidth(800); canvas.setHeight(450);
+        let mode = null;
+
+        document.getElementById('fileInput').onchange = function(e) {
+            const url = URL.createObjectURL(e.target.files[0]);
+            video.src = url;
+            video.play();
+        };
+
+        function setMode(m) { mode = m; canvas.isDrawingMode = false; }
+
+        canvas.on('mouse:down', function(o) {
+            if (!mode) return;
+            video.pause();
+            const pointer = canvas.getPointer(o.e);
+            if (mode === 'arrow') {
+                const line = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+                    stroke: '#edb900', strokeWidth: 4, originX: 'center', originY: 'center'
+                });
+                canvas.add(line);
+                canvas.setActiveObject(line);
+            }
+        });
+
+        function exportImage() {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 800; tempCanvas.height = 450;
+            const ctx = tempCanvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, 800, 450);
+            ctx.drawImage(canvas.getElement(), 0, 0, 800, 450);
+            const link = document.createElement('a');
+            link.download = 'analisis.png';
+            link.href = tempCanvas.toDataURL();
+            link.click();
+        }
+    </script>
 </body>
 </html>
