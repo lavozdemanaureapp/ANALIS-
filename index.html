@@ -2,33 +2,38 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>La Voz de Manaure - Analizador FINAL v28.0</title>
+    <title>La Voz de Manaure - Táctica Directa v29.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root { --ama: #edb900; --negro: #1a1a1a; --verde: #27ae60; --rojo: #e74c3c; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--negro); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         .toolbar { background: var(--ama); padding: 8px; display: flex; justify-content: center; gap: 8px; align-items: center; z-index: 100; flex-wrap: wrap; }
         .btn-t { background: black; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; }
-        .btn-t.active { background: white; color: black; box-shadow: 0 0 10px white; }
+        .btn-t.active { background: white; color: black; border: 1px solid black; }
         .color-dot { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid black; }
         .color-dot.selected { border-color: white; transform: scale(1.2); }
-        #canvas-wrapper { position: relative; background: #000; border: 2px solid #555; margin: auto; }
+        
+        #main-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #111; padding: 20px; }
+        
+        /* Contenedor dinámico para OBS */
+        #video-container { position: relative; background: #000; border: 3px solid var(--ama); overflow: hidden; }
         .res-yt { width: 854px; height: 480px; }
         .res-movil { width: 360px; height: 640px; }
-        video { position: absolute; visibility: hidden; pointer-events: none; }
-        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); display: flex; padding: 10px; gap: 10px; z-index: 200; align-items: center; box-sizing: border-box; }
+
+        video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; }
+        .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10; }
+
+        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); display: flex; padding: 10px; gap: 10px; z-index: 100; align-items: center; box-sizing: border-box; }
         input[type=range] { flex-grow: 1; accent-color: var(--ama); cursor: pointer; }
-        .rec-active { background: var(--rojo) !important; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
 <div class="toolbar">
     <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
-    <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 CARGAR VIDEO</button>
+    <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 VIDEO</button>
     
-    <div style="display:flex; gap:5px; padding: 0 10px;">
+    <div style="display:flex; gap:5px; padding: 0 10px; border-right: 1px solid rgba(0,0,0,0.2)">
         <div class="color-dot selected" style="background:#edb900" onclick="setColor('#edb900', this)"></div>
         <div class="color-dot" style="background:#e74c3c" onclick="setColor('#e74c3c', this)"></div>
         <div class="color-dot" style="background:#ffffff" onclick="setColor('#ffffff', this)"></div>
@@ -40,91 +45,50 @@
     <button id="btn-arrow" class="btn-t tool-btn" onclick="setMode('arrow')">↗️</button>
     <button id="btn-text" class="btn-t tool-btn" onclick="setMode('text')">TXT</button>
 
-    <button id="btn-rec" class="btn-t" style="background:#444" onclick="toggleRecording()">🔴 REC</button>
-    <button class="btn-t" style="background:var(--rojo)" onclick="deleteSelected()">🗑️</button>
-    
-    | 
-    <button id="res-yt-btn" class="btn-t active" onclick="changeResolution('yt')">📺 YT</button>
-    <button id="res-movil-btn" class="btn-t" onclick="changeResolution('movil')">📱 MÓVIL</button>
+    <button class="btn-t" style="background:var(--rojo)" onclick="deleteSelected()">🗑️ BORRAR</button>
+    |
+    <button id="res-yt-btn" class="btn-t active" onclick="changeRes('yt')">📺 YT</button>
+    <button id="res-movil-btn" class="btn-t" onclick="changeRes('movil')">📱 MÓVIL</button>
 </div>
 
-<div id="main-container" style="flex-grow:1; display:flex;">
-    <div id="canvas-wrapper" class="res-yt">
-        <video id="v-tachira" muted playsinline crossorigin="anonymous"></video>
+<div id="main-container">
+    <div id="video-container" class="res-yt">
+        <video id="v-tachira" muted playsinline></video>
         <canvas id="tactic-canvas"></canvas>
         <div class="video-controls">
-            <button class="btn-t" onclick="togglePlay()" id="play-btn">▶️</button>
-            <button class="btn-t speed-btn" onclick="setSpeed(0.25, this)">0.25x</button>
-            <button class="btn-t speed-btn active" onclick="setSpeed(1, this)">1x</button>
+            <button class="btn-t" onclick="togglePlay()" id="play-btn">▶️ PLAY</button>
+            <button class="btn-t" onclick="video.playbackRate = 0.25">0.25x</button>
+            <button class="btn-t" onclick="video.playbackRate = 1">1x</button>
             <input type="range" id="seek-bar" value="0" step="0.1">
-            <button class="btn-t" onclick="takeSnapshot()">📸</button>
+            <button class="btn-t" style="background:var(--ama); color:black" onclick="takeSnapshot()">📸 FOTO</button>
         </div>
     </div>
 </div>
 
 <script>
     const video = document.getElementById('v-tachira');
-    const canvas = new fabric.Canvas('tactic-canvas', { width: 854, height: 480, selection: true });
+    const canvas = new fabric.Canvas('tactic-canvas', { width: 854, height: 480 });
     let currentMode = 'select', currentColor = '#edb900';
-    let mediaRecorder, recordedChunks = [];
-    let videoImage;
 
     function handleFile(e) {
         const file = e.target.files[0];
-        if (file) {
-            const url = URL.createObjectURL(file);
-            video.src = url;
-            video.load();
-            video.onloadeddata = () => {
-                video.pause();
-                initVideoOnCanvas();
-            };
-        }
+        if (file) { video.src = URL.createObjectURL(file); video.pause(); canvas.clear(); }
     }
 
-    function initVideoOnCanvas() {
-        if (videoImage) canvas.remove(videoImage);
-        videoImage = new fabric.Image(video, { left: 0, top: 0, selectable: false, evented: false });
-        updateVideoScale();
-        canvas.setBackgroundImage(videoImage, canvas.renderAll.bind(canvas));
-        renderLoop();
-    }
-
-    function renderLoop() {
-        canvas.renderAll();
-        fabric.util.requestAnimFrame(renderLoop);
-    }
-
-    function updateVideoScale() {
-        if (!videoImage) return;
-        videoImage.scaleToHeight(canvas.height);
-        if (videoImage.getScaledWidth() < canvas.width) videoImage.scaleToWidth(canvas.width);
-        videoImage.centerH();
-    }
-
-    function changeResolution(type) {
-        const wrap = document.getElementById('canvas-wrapper');
+    function changeRes(type) {
+        const cont = document.getElementById('video-container');
         if (type === 'yt') {
-            wrap.className = 'res-yt';
-            canvas.setWidth(854); canvas.setHeight(480);
+            cont.className = 'res-yt'; canvas.setWidth(854); canvas.setHeight(480);
         } else {
-            wrap.className = 'res-movil';
-            canvas.setWidth(360); canvas.setHeight(640);
+            cont.className = 'res-movil'; canvas.setWidth(360); canvas.setHeight(640);
         }
-        updateVideoScale();
         document.getElementById('res-yt-btn').classList.toggle('active', type === 'yt');
         document.getElementById('res-movil-btn').classList.toggle('active', type === 'movil');
     }
 
     function togglePlay() { 
         video.paused ? video.play() : video.pause(); 
-        document.getElementById('play-btn').innerText = video.paused ? "▶️" : "⏸️";
-    }
-
-    function setSpeed(s, el) {
-        video.playbackRate = s;
-        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
-        el.classList.add('active');
+        document.getElementById('play-btn').innerText = video.paused ? "▶️ PLAY" : "⏸️ PAUSA";
     }
 
     document.getElementById('seek-bar').oninput = (e) => { video.currentTime = (e.target.value / 100) * video.duration; };
@@ -149,32 +113,15 @@
         canvas.discardActiveObject().renderAll();
     }
 
-    async function toggleRecording() {
-        const recBtn = document.getElementById('btn-rec');
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-            recBtn.classList.remove('rec-active');
-            recBtn.innerText = "🔴 REC";
-        } else {
-            recordedChunks = [];
-            const stream = canvas.getElement().captureStream(30);
-            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-            mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = 'analisis_manaure.webm'; a.click();
-            };
-            mediaRecorder.start();
-            recBtn.classList.add('rec-active');
-            recBtn.innerText = "⏹️ STOP";
-        }
-    }
-
     function takeSnapshot() {
+        const cont = document.getElementById('video-container');
+        const temp = document.createElement('canvas');
+        temp.width = canvas.width; temp.height = canvas.height;
+        const ctx = temp.getContext('2d');
+        ctx.drawImage(video, 0, 0, temp.width, temp.height);
+        ctx.drawImage(canvas.getElement(), 0, 0);
         const link = document.createElement('a');
-        link.download = 'captura.png'; link.href = canvas.toDataURL(); link.click();
+        link.download = 'analisis.png'; link.href = temp.toDataURL(); link.click();
     }
 
     let isDown, origX, origY, activeObj, head;
@@ -182,7 +129,7 @@
         if (currentMode === 'select' || currentMode === 'pencil') return;
         let p = canvas.getPointer(o.e);
         if (currentMode === 'text') {
-            canvas.add(new fabric.IText('TEXTO', { left: p.x, top: p.y, fontSize: 24, fill: currentColor, fontWeight: 'bold' }));
+            canvas.add(new fabric.IText('NOMBRE', { left: p.x, top: p.y, fontSize: 24, fill: currentColor, fontWeight: 'bold' }));
             setMode('select'); return;
         }
         isDown = true; origX = p.x; origY = p.y;
@@ -205,6 +152,7 @@
             let ang = Math.atan2(p.y - origY, p.x - origX) * 180 / Math.PI;
             head.set({ left: p.x, top: p.y, angle: ang + 90 });
         }
+        canvas.renderAll();
     });
 
     canvas.on('mouse:up', () => { isDown = false; if(currentMode !== 'pencil') setMode('select'); });
