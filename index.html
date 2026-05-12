@@ -2,33 +2,30 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>La Voz de Manaure - Táctica Final v24.0</title>
+    <title>La Voz de Manaure - Analizador FINAL v25.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root { --ama: #edb900; --negro: #1a1a1a; --verde: #27ae60; --rojo: #e74c3c; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--negro); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        .toolbar { background: var(--ama); padding: 8px; display: flex; justify-content: center; gap: 8px; align-items: center; z-index: 100; flex-wrap: wrap; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--negro); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .toolbar { background: var(--ama); padding: 8px; display: flex; justify-content: center; gap: 8px; align-items: center; z-index: 100; flex-wrap: wrap; }
         .btn-t { background: black; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; }
         .btn-t.active { background: white; color: black; box-shadow: 0 0 10px white; }
         .color-dot { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid black; }
         .color-dot.selected { border-color: white; transform: scale(1.2); }
-        #main-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden; }
-        #canvas-wrapper { position: relative; background: #000; border: 2px solid #555; }
+        #canvas-wrapper { position: relative; background: #000; border: 2px solid #555; margin: auto; }
         .modo-youtube { width: 854px; height: 480px; }
-        .modo-celular { width: 360px; height: 640px; border: 4px solid var(--ama) !important; }
-        #v-tachira { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; }
-        .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10; }
-        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); display: flex; padding: 10px; gap: 10px; z-index: 20; align-items: center; box-sizing: border-box; }
-        input[type=range] { flex-grow: 1; cursor: pointer; accent-color: var(--ama); }
+        video { display: none; } /* El video es invisible, solo se usa como fuente */
         .rec-active { background: var(--rojo) !important; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); display: flex; padding: 10px; gap: 10px; z-index: 200; align-items: center; box-sizing: border-box; }
+        input[type=range] { flex-grow: 1; accent-color: var(--ama); cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="toolbar">
     <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
-    <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 VIDEO</button>
+    <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 CARGAR VIDEO</button>
     
     <div style="display:flex; gap:5px; padding: 0 10px;">
         <div class="color-dot selected" style="background:#edb900" onclick="setColor('#edb900', this)"></div>
@@ -46,46 +43,53 @@
     <button class="btn-t" style="background:var(--rojo)" onclick="deleteSelected()">🗑️ BORRAR</button>
 </div>
 
-<div id="main-container">
-    <div id="canvas-wrapper" class="modo-youtube">
-        <video id="v-tachira" muted playsinline preload="auto"></video>
-        <canvas id="tactic-canvas"></canvas>
-        <div class="video-controls">
-            <button class="btn-t" onclick="togglePlay()" id="play-btn">▶️</button>
-            <div style="display:flex; gap:2px;">
-                <button class="btn-t speed-btn" onclick="setSpeed(0.25, this)" style="font-size:9px">.25x</button>
-                <button class="btn-t speed-btn" onclick="setSpeed(0.5, this)" style="font-size:9px">.5x</button>
-                <button class="btn-t speed-btn active" onclick="setSpeed(1, this)" style="font-size:9px">1x</button>
-            </div>
-            <input type="range" id="seek-bar" value="0" step="0.01">
-            <button class="btn-t" onclick="takeSnapshot()">📸</button>
-        </div>
+<div id="canvas-wrapper" class="modo-youtube">
+    <video id="v-tachira" muted playsinline></video>
+    <canvas id="tactic-canvas"></canvas>
+    <div class="video-controls">
+        <button class="btn-t" onclick="togglePlay()" id="play-btn">▶️ PLAY</button>
+        <button class="btn-t" onclick="setSpeed(0.5, this)">0.5x</button>
+        <button class="btn-t active" onclick="setSpeed(1, this)">1x</button>
+        <input type="range" id="seek-bar" value="0" step="0.1">
+        <button class="btn-t" onclick="takeSnapshot()">📸</button>
     </div>
 </div>
 
 <script>
     const video = document.getElementById('v-tachira');
-    const playBtn = document.getElementById('play-btn');
-    const seekBar = document.getElementById('seek-bar');
-    const canvas = new fabric.Canvas('tactic-canvas', { selection: true });
+    const canvas = new fabric.Canvas('tactic-canvas', { width: 854, height: 480 });
     let currentMode = 'select', currentColor = '#edb900';
     let mediaRecorder, recordedChunks = [];
 
     function handleFile(e) {
         const file = e.target.files[0];
-        if (file) { video.src = URL.createObjectURL(file); video.pause(); }
+        if (file) {
+            video.src = URL.createObjectURL(file);
+            video.onloadeddata = () => { video.pause(); renderVideo(); };
+        }
     }
 
-    function togglePlay() { video.paused ? video.play() : video.pause(); playBtn.innerText = video.paused ? "▶️" : "⏸️"; }
-    
-    function setSpeed(s, el) { 
-        video.playbackRate = s; 
+    // Renderizado del video DENTRO del canvas para que todo se grabe junto
+    function renderVideo() {
+        const img = new fabric.Image(video, { left: 0, top: 0, selectable: false, evented: false });
+        img.scaleToWidth(canvas.width);
+        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+        fabric.util.requestAnimFrame(renderVideo);
+    }
+
+    function togglePlay() { 
+        video.paused ? video.play() : video.pause(); 
+        document.getElementById('play-btn').innerText = video.paused ? "▶️ PLAY" : "⏸️ PAUSA";
+    }
+
+    function setSpeed(s, el) {
+        video.playbackRate = s;
         document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
         el.classList.add('active');
     }
 
-    seekBar.oninput = () => { video.currentTime = (seekBar.value / 100) * video.duration; };
-    video.ontimeupdate = () => { seekBar.value = (video.currentTime / video.duration) * 100 || 0; };
+    document.getElementById('seek-bar').oninput = (e) => { video.currentTime = (e.target.value / 100) * video.duration; };
+    video.ontimeupdate = () => { document.getElementById('seek-bar').value = (video.currentTime / video.duration) * 100 || 0; };
 
     function setColor(color, el) {
         currentColor = color;
@@ -106,7 +110,6 @@
         canvas.discardActiveObject().renderAll();
     }
 
-    // --- GRABACIÓN PRO ---
     async function toggleRecording() {
         const recBtn = document.getElementById('btn-rec');
         if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -115,10 +118,9 @@
             recBtn.innerText = "🔴 GRABAR";
         } else {
             recordedChunks = [];
-            // Capturamos el contenedor completo para que se vea VIDEO + DIBUJOS
-            const stream = document.getElementById('canvas-wrapper').captureStream(30);
-            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-            mediaRecorder.ondataavailable = (e) => { if(e.data.size > 0) recordedChunks.push(e.data); };
+            const stream = canvas.getElement().captureStream(30);
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
             mediaRecorder.onstop = () => {
                 const blob = new Blob(recordedChunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
@@ -132,14 +134,10 @@
     }
 
     function takeSnapshot() {
-        const wrap = document.getElementById('canvas-wrapper');
-        const temp = document.createElement('canvas');
-        temp.width = wrap.clientWidth; temp.height = wrap.clientHeight;
-        const ctx = temp.getContext('2d');
-        ctx.drawImage(video, 0, 0, temp.width, temp.height);
-        ctx.drawImage(canvas.getElement(), 0, 0);
         const link = document.createElement('a');
-        link.download = 'captura.png'; link.href = temp.toDataURL(); link.click();
+        link.download = 'captura.png';
+        link.href = canvas.toDataURL();
+        link.click();
     }
 
     let isDown, origX, origY, activeObj, head;
@@ -147,7 +145,7 @@
         if (currentMode === 'select' || currentMode === 'pencil') return;
         let p = canvas.getPointer(o.e);
         if (currentMode === 'text') {
-            canvas.add(new fabric.IText('TEXTO', { left: p.x, top: p.y, fontSize: 20, fill: currentColor, fontWeight: 'bold' }));
+            canvas.add(new fabric.IText('TEXTO', { left: p.x, top: p.y, fontSize: 24, fill: currentColor, fontWeight: 'bold' }));
             setMode('select'); return;
         }
         isDown = true; origX = p.x; origY = p.y;
@@ -178,11 +176,7 @@
     window.addEventListener('keydown', (e) => {
         if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
         if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
-        if (e.code === 'ArrowRight') video.currentTime += 0.05;
-        if (e.code === 'ArrowLeft') video.currentTime -= 0.05;
     });
-
-    window.onload = () => { setMode('select'); };
 </script>
 </body>
 </html>
