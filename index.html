@@ -2,28 +2,27 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>La Voz de Manaure - Táctica TV PRO v11.0</title>
+    <title>La Voz de Manaure - Táctica TV Final v12.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root { --ama: #edb900; --negro: #1a1a1a; --verde: #27ae60; --rojo: #e74c3c; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--negro); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        .toolbar { background: var(--ama); padding: 10px; display: flex; justify-content: center; gap: 8px; align-items: center; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); flex-wrap: wrap; }
-        .btn-t { background: black; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 11px; }
-        .btn-t:hover { background: #333; }
-        .btn-t.active { background: white; color: black; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .toolbar { background: var(--ama); padding: 8px; display: flex; justify-content: center; gap: 8px; align-items: center; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); flex-wrap: wrap; }
+        .btn-t { background: black; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; }
+        .btn-t.active { background: white; color: black; box-shadow: 0 0 8px rgba(255,255,255,0.6); }
         
         #canvas-wrapper { position: relative; background: #000; border: 2px solid #444; margin: auto; }
         .modo-youtube { width: 854px; height: 480px; }
         .modo-celular { width: 360px; height: 640px; border: 4px solid var(--ama) !important; }
 
-        video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; opacity: 0; }
-        .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10; }
+        video { display: none; } /* El video se procesa internamente por el canvas */
+        .canvas-container { margin: auto; }
 
         .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); display: flex; padding: 10px; gap: 10px; z-index: 20; align-items: center; box-sizing: border-box; }
         #seek-bar { flex-grow: 1; accent-color: var(--ama); }
         
-        .rec-active { background: var(--rojo) !important; animation: pulse 1.5s infinite; }
+        .rec-active { background: var(--rojo) !important; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
@@ -31,17 +30,16 @@
 
 <div class="toolbar">
     <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
-    <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 VIDEO</button>
+    <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 SUBIR VIDEO</button>
     
-    <button id="btn-select" class="btn-t tool-btn" onclick="setMode('select')">🖱️ EDITAR</button>
     <button id="btn-pencil" class="btn-t tool-btn" onclick="setMode('pencil')">✏️ LIBRE</button>
     <button id="btn-circle" class="btn-t tool-btn" onclick="setMode('circle')">⭕ ANILLO</button>
     <button id="btn-arrow" class="btn-t tool-btn" onclick="setMode('arrow')">↗️ FLECHA</button>
 
-    <div style="width:2px; height:20px; background:rgba(0,0,0,0.3)"></div>
+    <div style="width:2px; height:20px; background:rgba(0,0,0,0.2)"></div>
 
     <button id="btn-rec" class="btn-t" style="background:#444" onclick="toggleRecording()">🔴 GRABAR</button>
-    <button class="btn-t" style="background:var(--rojo)" onclick="deleteObj()">🗑️ BORRAR</button>
+    <button class="btn-t" style="background:var(--rojo)" onclick="clearCanvas()">🗑️ LIMPIAR</button>
     |
     <button id="btn-yt" class="btn-t active" onclick="resize('youtube')">📺 YT</button>
     <button id="btn-cel" class="btn-t" onclick="resize('celular')">📱 MÓVIL</button>
@@ -53,10 +51,10 @@
         <canvas id="tactic-canvas"></canvas>
         <div class="video-controls">
             <button class="btn-t" onclick="skip(-5)">⏪ 5s</button>
-            <button class="btn-t" onclick="togglePlay()">⏯️</button>
+            <button class="btn-t" onclick="togglePlay()">⏯️ PAUSA</button>
             <button class="btn-t" onclick="skip(5)">5s ⏩</button>
-            <button class="btn-t" onclick="video.playbackRate = 0.5">🐢 0.5x</button>
-            <button class="btn-t" onclick="video.playbackRate = 1">🏃 1x</button>
+            <button class="btn-t" onclick="setSpeed(0.5)">🐢 0.5x</button>
+            <button class="btn-t" onclick="setSpeed(1)">🏃 1x</button>
             <input type="range" id="seek-bar" value="0">
         </div>
     </div>
@@ -64,23 +62,28 @@
 
 <script>
     const video = document.getElementById('v-tachira');
-    let canvas = new fabric.Canvas('tactic-canvas');
-    let currentMode = 'select';
+    const canvas = new fabric.Canvas('tactic-canvas', { selection: false });
+    let currentMode = 'pencil';
     let mediaRecorder, recordedChunks = [];
 
     function handleFile(e) {
         const file = e.target.files[0];
-        if (file) { video.src = URL.createObjectURL(file); video.play(); }
+        if (file) {
+            video.src = URL.createObjectURL(file);
+            video.onloadeddata = () => {
+                video.play();
+                render();
+            };
+        }
     }
 
     function togglePlay() { video.paused ? video.play() : video.pause(); }
     function skip(t) { video.currentTime += t; }
+    function setSpeed(s) { video.playbackRate = s; }
 
     function resize(m) {
         const wrap = document.getElementById('canvas-wrapper');
         wrap.className = (m === 'youtube') ? 'modo-youtube' : 'modo-celular';
-        document.getElementById('btn-yt').classList.toggle('active', m === 'youtube');
-        document.getElementById('btn-cel').classList.toggle('active', m === 'celular');
         setTimeout(() => { 
             canvas.setWidth(wrap.clientWidth); 
             canvas.setHeight(wrap.clientHeight); 
@@ -91,19 +94,15 @@
         currentMode = m;
         canvas.isDrawingMode = (m === 'pencil');
         if(canvas.isDrawingMode) {
-            canvas.freeDrawingBrush.width = 4;
+            canvas.freeDrawingBrush.width = 5;
             canvas.freeDrawingBrush.color = '#edb900';
         }
         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('btn-' + m).classList.add('active');
     }
 
-    function deleteObj() { 
-        canvas.getActiveObjects().forEach(obj => canvas.remove(obj)); 
-        canvas.discardActiveObject().renderAll(); 
-    }
+    function clearCanvas() { canvas.clear(); render(); }
 
-    // GRABACIÓN
     async function toggleRecording() {
         const recBtn = document.getElementById('btn-rec');
         if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -113,13 +112,13 @@
         } else {
             recordedChunks = [];
             const stream = document.querySelector('canvas').captureStream(30);
-            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
             mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
             mediaRecorder.onstop = () => {
                 const blob = new Blob(recordedChunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url; a.download = 'analisis_manaure.webm'; a.click();
+                a.href = url; a.download = 'analisis_tachira.webm'; a.click();
             };
             mediaRecorder.start();
             recBtn.classList.add('rec-active');
@@ -127,29 +126,38 @@
         }
     }
 
-    // LÓGICA DE DIBUJO (Círculos y Flechas)
-    let isDown, origX, origY, activeObj;
+    let isDown, origX, origY, activeObj, arrowHead;
     canvas.on('mouse:down', function(o) {
-        if (currentMode === 'select' || currentMode === 'pencil') return;
+        if (currentMode === 'pencil') return;
         isDown = true;
         let pointer = canvas.getPointer(o.e);
         origX = pointer.x; origY = pointer.y;
-        if (currentMode === 'circle') activeObj = new fabric.Circle({left:origX, top:origY, radius:1, stroke:'#edb900', strokeWidth:5, fill:'rgba(237,185,0,0.1)'});
-        else if (currentMode === 'arrow') activeObj = new fabric.Line([origX, origY, origX, origY], {stroke: 'white', strokeWidth: 6});
+        
+        if (currentMode === 'circle') {
+            activeObj = new fabric.Circle({left:origX, top:origY, radius:1, stroke:'#edb900', strokeWidth:5, fill:'rgba(237,185,0,0.2)', selectable: false});
+        } else if (currentMode === 'arrow') {
+            activeObj = new fabric.Line([origX, origY, origX, origY], {stroke: 'white', strokeWidth: 6, selectable: false});
+            arrowHead = new fabric.Triangle({ width: 20, height: 20, fill: 'white', left: origX, top: origY, originX: 'center', originY: 'center', selectable: false, angle: 90 });
+            canvas.add(arrowHead);
+        }
         canvas.add(activeObj);
     });
 
     canvas.on('mouse:move', function(o) {
-        if (!isDown || currentMode === 'select' || currentMode === 'pencil') return;
+        if (!isDown || currentMode === 'pencil') return;
         let pointer = canvas.getPointer(o.e);
-        if (currentMode === 'circle') activeObj.set({ radius: Math.abs(origX - pointer.x) / 2 });
-        else if (currentMode === 'arrow') activeObj.set({ x2: pointer.x, y2: pointer.y });
+        if (currentMode === 'circle') {
+            activeObj.set({ radius: Math.abs(origX - pointer.x) / 2 });
+        } else if (currentMode === 'arrow') {
+            activeObj.set({ x2: pointer.x, y2: pointer.y });
+            let angle = Math.atan2(pointer.y - origY, pointer.x - origX) * 180 / Math.PI;
+            arrowHead.set({ left: pointer.x, top: pointer.y, angle: angle + 90 });
+        }
         canvas.renderAll();
     });
 
-    canvas.on('mouse:up', () => { isDown = false; if(currentMode !== 'pencil') setMode('select'); });
+    canvas.on('mouse:up', () => { isDown = false; });
 
-    // RENDERIZADO DEL VIDEO EN EL CANVAS (Para grabación)
     function render() {
         canvas.setBackgroundImage(new fabric.Image(video, {
             width: canvas.width, height: canvas.height, objectFit: 'contain'
@@ -160,7 +168,7 @@
     window.onload = () => { 
         const wrap = document.getElementById('canvas-wrapper');
         canvas.setWidth(wrap.clientWidth); canvas.setHeight(wrap.clientHeight);
-        render(); setMode('select');
+        setMode('pencil');
     };
     video.ontimeupdate = () => { document.getElementById('seek-bar').value = (video.currentTime / video.duration) * 100 || 0; };
 </script>
