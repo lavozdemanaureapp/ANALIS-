@@ -2,19 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>La Voz de Manaure - Analizador Quirúrgico v18.0</title>
+    <title>La Voz de Manaure - Táctica Pro v20.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root { --ama: #edb900; --negro: #1a1a1a; --verde: #27ae60; --rojo: #e74c3c; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--negro); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        .toolbar { background: var(--ama); padding: 10px; display: flex; justify-content: center; gap: 8px; align-items: center; z-index: 100; }
-        .btn-t { background: black; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 11px; }
-        #canvas-wrapper { position: relative; background: #000; border: 2px solid #555; margin: auto; }
+        .toolbar { background: var(--ama); padding: 8px; display: flex; justify-content: center; gap: 10px; align-items: center; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .btn-t { background: black; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; }
+        .btn-t.active { background: white; color: black; box-shadow: 0 0 10px white; }
+        #main-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden; }
+        #canvas-wrapper { position: relative; background: #000; border: 2px solid #555; }
         .modo-youtube { width: 854px; height: 480px; }
         .modo-celular { width: 360px; height: 640px; border: 4px solid var(--ama) !important; }
         #v-tachira { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; }
         .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10; }
-        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); display: flex; padding: 10px; gap: 10px; z-index: 20; align-items: center; box-sizing: border-box; }
+        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); display: flex; padding: 8px; gap: 10px; z-index: 20; align-items: center; box-sizing: border-box; }
         input[type=range] { flex-grow: 1; cursor: pointer; accent-color: var(--ama); }
     </style>
 </head>
@@ -22,12 +24,15 @@
 
 <div class="toolbar">
     <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
-    <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 CARGAR JUGADA</button>
+    <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 VIDEO</button>
+    
+    <button id="btn-select" class="btn-t tool-btn active" onclick="setMode('select')">🖱️ MOVER</button>
     <button id="btn-pencil" class="btn-t tool-btn" onclick="setMode('pencil')">✏️ LIBRE</button>
     <button id="btn-circle" class="btn-t tool-btn" onclick="setMode('circle')">⭕ ANILLO</button>
     <button id="btn-arrow" class="btn-t tool-btn" onclick="setMode('arrow')">↗️ FLECHA</button>
-    <button class="btn-t" style="background:var(--ama); color:black" onclick="takeSnapshot()">📸 FOTO PRO</button>
-    <button class="btn-t" style="background:var(--rojo)" onclick="canvas.clear()">🗑️ LIMPIAR</button>
+
+    <button class="btn-t" style="background:var(--ama); color:black" onclick="takeSnapshot()">📸 FOTO</button>
+    <button class="btn-t" style="background:var(--rojo)" onclick="deleteSelected()">🗑️ BORRAR</button>
     |
     <button class="btn-t" onclick="resize('youtube')">📺 YT</button>
     <button class="btn-t" onclick="resize('celular')">📱 MÓVIL</button>
@@ -38,43 +43,50 @@
         <video id="v-tachira" muted playsinline></video>
         <canvas id="tactic-canvas"></canvas>
         <div class="video-controls">
-            <span id="time-display" style="font-family:monospace; font-size:12px;">00:00</span>
             <input type="range" id="seek-bar" value="0" step="0.1">
-            <button class="btn-t" id="play-btn" onclick="togglePlay()">▶️</button>
+            <button class="btn-t" onclick="togglePlay()" id="play-btn">▶️</button>
         </div>
     </div>
 </div>
 
 <script>
     const video = document.getElementById('v-tachira');
-    const playBtn = document.getElementById('play-btn');
-    const seekBar = document.getElementById('seek-bar');
-    const timeDisplay = document.getElementById('time-display');
-    const canvas = new fabric.Canvas('tactic-canvas', { selection: false, backgroundColor: 'transparent' });
-    let currentMode = 'pencil';
+    const canvas = new fabric.Canvas('tactic-canvas', { selection: true });
+    let currentMode = 'select';
 
     function handleFile(e) {
         const file = e.target.files[0];
         if (file) { video.src = URL.createObjectURL(file); video.pause(); }
     }
 
-    function togglePlay() { video.paused ? video.play() : video.pause(); playBtn.innerText = video.paused ? "▶️" : "⏸️"; }
+    function togglePlay() { video.paused ? video.play() : video.pause(); document.getElementById('play-btn').innerText = video.paused ? "▶️" : "⏸️"; }
 
-    // Control Quirúrgico: Actualizar video al mover la barra
-    seekBar.oninput = () => { video.currentTime = (seekBar.value / 100) * video.duration; };
+    function setMode(m) {
+        currentMode = m;
+        canvas.isDrawingMode = (m === 'pencil');
+        canvas.selection = (m === 'select');
+        canvas.forEachObject(obj => obj.selectable = (m === 'select'));
+        
+        if(canvas.isDrawingMode) {
+            canvas.freeDrawingBrush.width = 5;
+            canvas.freeDrawingBrush.color = '#edb900';
+        }
 
-    video.ontimeupdate = () => {
-        seekBar.value = (video.currentTime / video.duration) * 100 || 0;
-        let m = Math.floor(video.currentTime / 60);
-        let s = Math.floor(video.currentTime % 60);
-        timeDisplay.innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-    };
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + m).classList.add('active');
+    }
+
+    function deleteSelected() {
+        canvas.getActiveObjects().forEach(obj => canvas.remove(obj));
+        canvas.discardActiveObject().renderAll();
+    }
 
     // Atajos de Teclado
     window.addEventListener('keydown', (e) => {
         if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
-        if (e.code === 'ArrowRight') { video.currentTime += 0.05; } // Paso milimétrico
-        if (e.code === 'ArrowLeft') { video.currentTime -= 0.05; }
+        if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+        if (e.code === 'ArrowRight') video.currentTime += 0.05;
+        if (e.code === 'ArrowLeft') video.currentTime -= 0.05;
     });
 
     function takeSnapshot() {
@@ -85,16 +97,39 @@
         ctx.drawImage(video, 0, 0, temp.width, temp.height);
         ctx.drawImage(canvas.getElement(), 0, 0);
         const link = document.createElement('a');
-        link.download = 'analisis_quirurgico.png';
-        link.href = temp.toDataURL();
-        link.click();
+        link.download = 'analisis_manaure.png';
+        link.href = temp.toDataURL(); link.click();
     }
 
-    // (Lógica de dibujo simplificada v17 se mantiene igual para Flecha y Círculo)
-    function setMode(m) {
-        currentMode = m; canvas.isDrawingMode = (m === 'pencil');
-        if(canvas.isDrawingMode) { canvas.freeDrawingBrush.width = 5; canvas.freeDrawingBrush.color = '#edb900'; }
-    }
+    let isDown, origX, origY, activeObj, head;
+    canvas.on('mouse:down', function(o) {
+        if (currentMode === 'pencil' || currentMode === 'select') return;
+        isDown = true;
+        let p = canvas.getPointer(o.e);
+        origX = p.x; origY = p.y;
+        if (currentMode === 'circle') {
+            activeObj = new fabric.Circle({ left:origX, top:origY, radius:1, stroke:'#edb900', strokeWidth:5, fill:'rgba(237,185,0,0.2)', selectable: true });
+            canvas.add(activeObj);
+        } else if (currentMode === 'arrow') {
+            activeObj = new fabric.Line([origX, origY, origX, origY], { stroke: 'white', strokeWidth: 6, selectable: true });
+            head = new fabric.Triangle({ width:20, height:20, fill:'white', originX:'center', originY:'center', selectable: false });
+            canvas.add(activeObj, head);
+        }
+    });
+
+    canvas.on('mouse:move', function(o) {
+        if (!isDown || currentMode === 'pencil' || currentMode === 'select') return;
+        let p = canvas.getPointer(o.e);
+        if (currentMode === 'circle') activeObj.set({ radius: Math.abs(origX - p.x) / 2 });
+        else if (currentMode === 'arrow') {
+            activeObj.set({ x2: p.x, y2: p.y });
+            let ang = Math.atan2(p.y - origY, p.x - origX) * 180 / Math.PI;
+            head.set({ left: p.x, top: p.y, angle: ang + 90 });
+        }
+        canvas.renderAll();
+    });
+
+    canvas.on('mouse:up', () => { isDown = false; setMode('select'); });
 
     function resize(m) {
         const wrap = document.getElementById('canvas-wrapper');
@@ -102,22 +137,8 @@
         setTimeout(() => { canvas.setWidth(wrap.clientWidth); canvas.setHeight(wrap.clientHeight); }, 100);
     }
 
-    let isDown, origX, origY, activeObj, head;
-    canvas.on('mouse:down', function(o) {
-        if (currentMode === 'pencil') return;
-        isDown = true; let p = canvas.getPointer(o.e); origX = p.x; origY = p.y;
-        if (currentMode === 'circle') { activeObj = new fabric.Circle({ left:origX, top:origY, radius:1, stroke:'#edb900', strokeWidth:5, fill:'rgba(237,185,0,0.2)' }); canvas.add(activeObj); }
-        else if (currentMode === 'arrow') { activeObj = new fabric.Line([origX, origY, origX, origY], { stroke: 'white', strokeWidth: 6 }); head = new fabric.Triangle({ width:20, height:20, fill:'white', originX:'center', originY:'center' }); canvas.add(activeObj, head); }
-    });
-    canvas.on('mouse:move', function(o) {
-        if (!isDown || currentMode === 'pencil') return;
-        let p = canvas.getPointer(o.e);
-        if (currentMode === 'circle') activeObj.set({ radius: Math.abs(origX - p.x) / 2 });
-        else if (currentMode === 'arrow') { activeObj.set({ x2: p.x, y2: p.y }); let ang = Math.atan2(p.y - origY, p.x - origX) * 180 / Math.PI; head.set({ left: p.x, top: p.y, angle: ang + 90 }); }
-        canvas.renderAll();
-    });
-    canvas.on('mouse:up', () => isDown = false);
-    window.onload = () => { resize('youtube'); setMode('pencil'); };
+    video.ontimeupdate = () => { document.getElementById('seek-bar').value = (video.currentTime / video.duration) * 100 || 0; };
+    window.onload = () => { resize('youtube'); setMode('select'); };
 </script>
 </body>
 </html>
