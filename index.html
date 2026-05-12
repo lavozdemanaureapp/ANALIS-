@@ -2,167 +2,122 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>La Voz de Manaure - Analizador Táctico TOTAL v6.0</title>
+    <title>La Voz de Manaure - Táctica TV v9.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
-        :root { --ama: #edb900; --negro: #1a1a1a; --gris: #333; --rojo: #ff0000; --blanco: #ffffff; --verde: #2ecc71; }
-        body { font-family: 'Segoe UI', Arial; background: var(--negro); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-        
-        .toolbar { background: var(--ama); padding: 8px; display: flex; justify-content: center; gap: 6px; align-items: center; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.5); flex-wrap: wrap; }
-        .btn-t { background: black; color: white; border: 2px solid transparent; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; }
-        .btn-t.active { background: white; color: black; border-color: black; }
-
-        .color-picker { display: flex; gap: 6px; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 20px; }
-        .c-box { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid white; }
-        .c-box.active { border-color: black; transform: scale(1.2); }
-
-        #main-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #000; position: relative; }
-        #canvas-wrapper { position: relative; background: black; transition: 0.4s; border: 2px solid var(--gris); }
-        
-        .modo-youtube { width: 1000px; height: 562px; }
+        :root { --ama: #edb900; --negro: #1a1a1a; --rojo: #ff4444; --blanco: #ffffff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--negro); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        .toolbar { background: var(--ama); padding: 10px; display: flex; justify-content: center; gap: 10px; align-items: center; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .btn-t { background: black; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.3s; }
+        .btn-t.active { background: white; color: black; transform: scale(1.05); }
+        #canvas-wrapper { position: relative; background: #000; border: 2px solid #444; margin: auto; }
+        .modo-youtube { width: 854px; height: 480px; }
         .modo-celular { width: 360px; height: 640px; border: 4px solid var(--ama) !important; }
-
-        video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; pointer-events: none; }
+        video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
         .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10; }
-
-        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); display: flex; padding: 10px; gap: 10px; z-index: 20; align-items: center; box-sizing: border-box; }
-        #seek-bar { flex-grow: 1; accent-color: var(--ama); }
+        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); display: flex; padding: 10px; gap: 10px; z-index: 20; align-items: center; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <div class="toolbar">
-        <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
-        <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 VIDEO</button>
-        
-        <div style="width:1px; height:20px; background:rgba(0,0,0,0.2)"></div>
+<div class="toolbar">
+    <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
+    <button class="btn-t" style="background:#27ae60" onclick="document.getElementById('file-input').click()">📁 SUBIR JUGADA</button>
+    
+    <button id="btn-select" class="btn-t tool-btn" onclick="setMode('select')">🖱️ MOVER/EDITAR</button>
+    <button id="btn-circle" class="btn-t tool-btn" onclick="setMode('circle')">⭕ ANILLO JUGADOR</button>
+    <button id="btn-arrow" class="btn-t tool-btn" onclick="setMode('arrow')">↗️ FLECHA TV</button>
+    <button id="btn-area" class="btn-t tool-btn" onclick="setMode('area')">🟦 ZONA PRESIÓN</button>
 
-        <button id="btn-select" class="btn-t tool-btn" onclick="setMode('select')">🖱️ EDITAR</button>
-        <button id="btn-pencil" class="btn-t tool-btn" onclick="setMode('pencil')">✏️ LIBRE</button>
-        <button id="btn-circle" class="btn-t tool-btn" onclick="setMode('circle')">⭕ CÍRCULO</button>
-        <button id="btn-arrow" class="btn-t tool-btn" onclick="setMode('arrow')">↗️ FLECHA</button>
-        
-        <div class="color-picker">
-            <div id="col-white" class="c-box active" style="background: var(--blanco);" onclick="setColor('white', 'col-white')"></div>
-            <div id="col-ama" class="c-box" style="background: var(--ama);" onclick="setColor('#edb900', 'col-ama')"></div>
-            <div id="col-rojo" class="c-box" style="background: var(--rojo);" onclick="setColor('#ff0000', 'col-rojo')"></div>
-        </div>
-
-        <button class="btn-t" style="background: #e74c3c" onclick="deleteSelected()">🗑️ BORRAR</button>
-        |
-        <button id="btn-yt" class="btn-t active" onclick="resize('youtube')">📺 YT</button>
-        <button id="btn-cel" class="btn-t" onclick="resize('celular')">📱 MÓVIL</button>
+    <div style="background:rgba(0,0,0,0.2); padding:5px; border-radius:20px; display:flex; gap:5px;">
+        <div class="c-box" style="width:20px; height:20px; background:white; border-radius:50%; cursor:pointer;" onclick="setColor('white')"></div>
+        <div class="c-box" style="width:20px; height:20px; background:#edb900; border-radius:50%; cursor:pointer;" onclick="setColor('#edb900')"></div>
+        <div class="c-box" style="width:20px; height:20px; background:#ff4444; border-radius:50%; cursor:pointer;" onclick="setColor('#ff4444')"></div>
     </div>
 
-    <div id="main-container">
-        <div id="canvas-wrapper" class="modo-youtube">
-            <video id="v-tachira" loop></video>
-            <canvas id="tactic-canvas"></canvas>
-            
-            <div class="video-controls">
-                <button class="btn-t" onclick="skip(-5)">⏪</button>
-                <button class="btn-t" onclick="togglePlay()" id="p-btn">▶️</button>
-                <button class="btn-t" onclick="skip(5)">⏩</button>
-                <input type="range" id="seek-bar" value="0">
-                <span id="timer" style="font-size:12px; font-family:monospace">00:00</span>
-            </div>
+    <button class="btn-t" style="background:#c0392b" onclick="deleteObj()">🗑️ BORRAR</button>
+    <button class="btn-t" onclick="resize('youtube')">📺 YT</button>
+    <button class="btn-t" onclick="resize('celular')">📱 MÓVIL</button>
+</div>
+
+<div id="main-container" style="flex-grow:1; display:flex;">
+    <div id="canvas-wrapper" class="modo-youtube">
+        <video id="v-tachira" loop muted></video>
+        <canvas id="tactic-canvas"></canvas>
+        <div class="video-controls">
+            <button class="btn-t" onclick="video.playbackRate = 0.5">🐢 0.5x</button>
+            <button class="btn-t" onclick="video.paused ? video.play() : video.pause()">⏯️</button>
+            <button class="btn-t" onclick="video.playbackRate = 1">🏃 1x</button>
+            <input type="range" id="seek-bar" style="flex-grow:1" value="0">
         </div>
     </div>
+</div>
 
-    <script>
-        const video = document.getElementById('v-tachira');
-        let canvas = new fabric.Canvas('tactic-canvas');
-        let currentMode = 'select';
-        let currentColor = 'white';
+<script>
+    const video = document.getElementById('v-tachira');
+    let canvas = new fabric.Canvas('tactic-canvas');
+    let currentMode = 'select';
+    let currentColor = 'white';
 
-        function initCanvas() {
-            const wrap = document.getElementById('canvas-wrapper');
-            canvas.setWidth(wrap.clientWidth);
-            canvas.setHeight(wrap.clientHeight);
-            canvas.freeDrawingBrush.width = 4;
-            canvas.freeDrawingBrush.color = currentColor;
+    function handleFile(e) {
+        const file = e.target.files[0];
+        if (file) { video.src = URL.createObjectURL(file); video.play(); }
+    }
+
+    function resize(m) {
+        const wrap = document.getElementById('canvas-wrapper');
+        wrap.className = (m === 'youtube') ? 'modo-youtube' : 'modo-celular';
+        setTimeout(() => { canvas.setWidth(wrap.clientWidth); canvas.setHeight(wrap.clientHeight); }, 500);
+    }
+
+    function setMode(m) {
+        currentMode = m;
+        canvas.isDrawingMode = false;
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + m).classList.add('active');
+    }
+
+    function setColor(c) { currentColor = c; }
+    function deleteObj() { canvas.getActiveObjects().forEach(obj => canvas.remove(obj)); canvas.discardActiveObject().renderAll(); }
+
+    let isDown, origX, origY, activeObj;
+
+    canvas.on('mouse:down', function(o) {
+        if (currentMode === 'select') return;
+        isDown = true;
+        let pointer = canvas.getPointer(o.e);
+        origX = pointer.x; origY = pointer.y;
+
+        if (currentMode === 'circle') {
+            activeObj = new fabric.Circle({ left: origX, top: origY, radius: 1, stroke: currentColor, strokeWidth: 5, fill: 'rgba(255,255,255,0.1)', shadow: 'rgba(0,0,0,0.5) 2px 2px 5px' });
+        } else if (currentMode === 'arrow') {
+            // Flecha con estilo de TV (usamos un triángulo al final después)
+            activeObj = new fabric.Line([origX, origY, origX, origY], { stroke: currentColor, strokeWidth: 6, strokeCap: 'round', shadow: 'rgba(0,0,0,0.5) 2px 2px 5px' });
+        } else if (currentMode === 'area') {
+            activeObj = new fabric.Rect({ left: origX, top: origY, width: 1, height: 1, fill: currentColor === 'white' ? 'rgba(255,255,255,0.3)' : 'rgba(237,185,0,0.3)', stroke: currentColor, strokeWidth: 2 });
         }
-        window.onload = initCanvas;
+        canvas.add(activeObj);
+    });
 
-        function handleFile(e) {
-            const file = e.target.files[0];
-            if (file) { video.src = URL.createObjectURL(file); video.play(); }
-        }
+    canvas.on('mouse:move', function(o) {
+        if (!isDown || currentMode === 'select') return;
+        let pointer = canvas.getPointer(o.e);
+        if (currentMode === 'circle') activeObj.set({ radius: Math.abs(origX - pointer.x) / 2 });
+        else if (currentMode === 'arrow') activeObj.set({ x2: pointer.x, y2: pointer.y });
+        else if (currentMode === 'area') activeObj.set({ width: Math.abs(origX - pointer.x), height: Math.abs(origY - pointer.y) });
+        canvas.renderAll();
+    });
 
-        function togglePlay() { video.paused ? video.play() : video.pause(); }
-        function skip(t) { video.currentTime += t; }
+    canvas.on('mouse:up', () => { isDown = false; setMode('select'); });
 
-        function resize(m) {
-            const wrap = document.getElementById('canvas-wrapper');
-            wrap.className = (m === 'youtube') ? 'modo-youtube' : 'modo-celular';
-            document.getElementById('btn-yt').classList.toggle('active', m === 'youtube');
-            document.getElementById('btn-cel').classList.toggle('active', m === 'celular');
-            setTimeout(() => {
-                canvas.setWidth(wrap.clientWidth);
-                canvas.setHeight(wrap.clientHeight);
-                canvas.renderAll();
-            }, 500);
-        }
-
-        function setMode(m) {
-            currentMode = m;
-            canvas.isDrawingMode = (m === 'pencil');
-            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('btn-' + m).classList.add('active');
-            if(m !== 'select') canvas.discardActiveObject().renderAll();
-        }
-
-        function setColor(c, id) {
-            currentColor = c;
-            canvas.freeDrawingBrush.color = c;
-            document.querySelectorAll('.c-box').forEach(b => b.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
-
-        function deleteSelected() {
-            canvas.getActiveObjects().forEach(obj => canvas.remove(obj));
-            canvas.discardActiveObject().renderAll();
-        }
-
-        let isDown, origX, origY, activeObj;
-
-        canvas.on('mouse:down', function(o) {
-            if (currentMode === 'select' || currentMode === 'pencil') return;
-            isDown = true;
-            var pointer = canvas.getPointer(o.e);
-            origX = pointer.x; origY = pointer.y;
-
-            if (currentMode === 'circle') {
-                activeObj = new fabric.Circle({ left: origX, top: origY, radius: 1, stroke: currentColor, strokeWidth: 4, fill: 'transparent', selectable: true });
-            } else if (currentMode === 'arrow') {
-                activeObj = new fabric.Line([origX, origY, origX, origY], { stroke: currentColor, strokeWidth: 4, selectable: true });
-            }
-            canvas.add(activeObj);
-        });
-
-        canvas.on('mouse:move', function(o) {
-            if (!isDown || currentMode === 'select' || currentMode === 'pencil') return;
-            var pointer = canvas.getPointer(o.e);
-            if (currentMode === 'circle') {
-                var radius = Math.abs(origX - pointer.x) / 2;
-                activeObj.set({ radius: radius });
-            } else if (currentMode === 'arrow') {
-                activeObj.set({ x2: pointer.x, y2: pointer.y });
-            }
-            canvas.renderAll();
-        });
-
-        canvas.on('mouse:up', function() {
-            isDown = false;
-            if(currentMode !== 'pencil') setMode('select');
-        });
-
-        video.ontimeupdate = () => { 
-            document.getElementById('seek-bar').value = (video.currentTime / video.duration) * 100 || 0; 
-            let m = Math.floor(video.currentTime / 60);
-            let s = Math.floor(video.currentTime % 60);
-            document.getElementById('timer').innerText = `${m}:${s.toString().padStart(2,'0')}`;
-        };
-    </script>
+    window.onload = () => { 
+        const wrap = document.getElementById('canvas-wrapper');
+        canvas.setWidth(wrap.clientWidth); 
+        canvas.setHeight(wrap.clientHeight); 
+        setMode('select');
+    };
+    
+    video.ontimeupdate = () => { document.getElementById('seek-bar').value = (video.currentTime / video.duration) * 100 || 0; };
+</script>
 </body>
 </html>
