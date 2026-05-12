@@ -2,118 +2,77 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Voz de Manaure - PWA de Análisis Pro</title>
+    <title>La Voz de Manaure - PWA Táctica Pro</title>
     <style>
-        :root { --amarillo: #edb900; --negro: #1a1a1a; --gris: #333; }
-        body { font-family: 'Arial', sans-serif; background-color: var(--negro); color: white; margin: 0; overflow-x: hidden; }
+        :root { --ama: #edb900; --negro: #1a1a1a; --gris: #333; }
+        body { font-family: Arial; background: var(--negro); color: white; margin: 0; text-align: center; }
 
-        /* PANEL SUPERIOR Y HERRAMIENTAS */
-        .toolbar {
-            background: var(--amarillo); padding: 10px; display: flex; 
-            justify-content: center; gap: 8px; flex-wrap: wrap; sticky; top: 0; z-index: 1000;
-        }
-
-        .btn-tool {
-            background: black; color: white; border: none; padding: 8px 12px;
-            border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;
-        }
-
-        .btn-tool:hover { background: var(--gris); }
-
-        /* LIENZO DE GRABACIÓN */
-        #canvas-area {
-            margin: 20px auto; background: black; position: relative;
-            transition: all 0.4s ease; border: 2px solid var(--gris);
-        }
-
-        .modo-youtube { width: 80%; aspect-ratio: 16 / 9; }
-        .modo-celular { width: 360px; height: 640px; border: 4px solid var(--amarillo); }
-
-        /* CAPA DE DIBUJO (SVG) */
-        #drawing-svg {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; pointer-events: all; cursor: crosshair;
-        }
-
-        /* VIDEO PLAYER */
-        #video-player { width: 100%; height: 100%; object-fit: contain; }
-
-        /* BARRA DE CONTROL DE VIDEO */
-        .video-controls {
-            position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.7);
-            display: flex; gap: 10px; padding: 10px; z-index: 20;
-        }
+        /* PANEL SUPERIOR */
+        .toolbar { background: var(--ama); padding: 10px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; sticky; top: 0; z-index: 100; }
+        .btn-t { background: black; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         
-        input[type="range"] { flex-grow: 1; accent-color: var(--amarillo); }
+        /* SELECTOR DE COLORES */
+        .color-picker { display: flex; gap: 5px; align-items: center; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 5px; }
+        .c-box { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+        .c-box.active { border-color: black; }
+
+        /* AREA DE VIDEO Y DIBUJO */
+        #canvas-wrap { margin: 20px auto; background: black; position: relative; transition: 0.4s; border: 2px solid var(--gris); }
+        .modo-yt { width: 85%; aspect-ratio: 16 / 9; }
+        .modo-cel { width: 360px; height: 640px; border: 4px solid var(--ama) !important; }
+
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: crosshair; }
+        video { width: 100%; height: 100%; object-fit: contain; }
     </style>
 </head>
 <body>
 
     <div class="toolbar">
-        <button class="btn-tool" onclick="setTool('circle')">⭕ Círculo</button>
-        <button class="btn-tool" onclick="setTool('arrow')">↗️ Flecha</button>
-        <button class="btn-tool" onclick="setTool('double-arrow')">↔️ Doble Punta</button>
-        <button class="btn-tool" onclick="setTool('line')">➖ Línea</button>
-        <button class="btn-tool" onclick="setTool('rect')">🟦 Cuadro</button>
-        <button class="btn-tool" onclick="setTool('text')">TXT Texto</button>
-        <button class="btn-tool" onclick="setTool('triangle')">▲ Triángulo</button>
-        <button class="btn-tool" style="background: red;" onclick="clearCanvas()">🗑️ Limpiar</button>
-        <div style="border-left: 1px solid black; margin: 0 10px;"></div>
-        <button class="btn-tool" style="color: black; background: white;" onclick="resize('youtube')">📺 YouTube</button>
-        <button class="btn-tool" style="color: black; background: white;" onclick="resize('celular')">📱 Móvil</button>
+        <button class="btn-t" onclick="setTool('circle')">⭕ Círculo</button>
+        <button class="btn-t" onclick="setTool('arrow')">↗️ Flecha</button>
+        <button class="btn-t" onclick="setTool('double')">↔️ Doble</button>
+        <button class="btn-t" onclick="setTool('line')">➖ Línea</button>
+        <button class="btn-t" onclick="setTool('text')">TXT</button>
+
+        <div class="color-picker">
+            <div class="c-box active" style="background: white;" onclick="setColor('white', this)"></div>
+            <div class="c-box" style="background: #edb900;" onclick="setColor('#edb900', this)"></div>
+            <div class="c-box" style="background: #ff0000;" onclick="setColor('#ff0000', this)"></div>
+        </div>
+
+        <button class="btn-t" style="background: red;" onclick="clearS()">🗑️ Limpiar</button>
+        |
+        <button class="btn-t" onclick="resz('yt')">📺 YouTube</button>
+        <button class="btn-t" onclick="resz('cel')">📱 Móvil</button>
     </div>
 
-    <div id="canvas-area" class="modo-youtube">
-        <video id="video-player" src="video_tachira.mp4"></video>
-
-        <svg id="drawing-svg">
-            </svg>
-
-        <div class="video-controls">
-            <button onclick="togglePlay()">⏯️</button>
-            <input type="range" id="seek-bar" value="0">
-            <span id="timer">00:00</span>
-        </div>
+    <div id="canvas-wrap" class="modo-yt">
+        <video id="v" src="video_tachira.mp4" controls></video>
+        <svg id="s"></svg>
     </div>
 
     <script>
-        let currentTool = 'arrow';
-        const svg = document.getElementById('drawing-svg');
-        const video = document.getElementById('video-player');
+        let tool = 'arrow';
+        let color = 'white';
 
-        // FUNCIÓN DE CAMBIO DE TAMAÑO (TU PEDIDO)
-        function resize(mode) {
-            const area = document.getElementById('canvas-area');
-            if(mode === 'youtube') {
-                area.className = 'modo-youtube';
-            } else {
-                area.className = 'modo-celular';
-            }
-            // Limpiamos al redimensionar para evitar que las flechas se desubiquen
-            clearCanvas();
-        }
-
-        // LÓGICA DE HERRAMIENTAS
-        function setTool(tool) { currentTool = tool; console.log("Herramienta: " + tool); }
-
-        function clearCanvas() { svg.innerHTML = ''; }
-
-        function togglePlay() {
-            if (video.paused) video.play();
-            else video.pause();
-        }
-
-        // Aquí conectaríamos los eventos mousedown/mousemove para dibujar 
-        // el círculo, flechas y demás sobre el SVG...
+        function setTool(t) { tool = t; }
         
-        // Actualizar barra de tiempo
-        video.addEventListener('timeupdate', () => {
-            const bar = document.getElementById('seek-bar');
-            const timer = document.getElementById('timer');
-            bar.value = (video.currentTime / video.duration) * 100;
-            timer.innerText = Math.floor(video.currentTime) + "s";
-        });
+        function setColor(c, el) { 
+            color = c; 
+            document.querySelectorAll('.c-box').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        function clearS() { document.getElementById('s').innerHTML = ''; }
+
+        function resz(m) {
+            const w = document.getElementById('canvas-wrap');
+            w.className = (m === 'yt') ? 'modo-yt' : 'modo-cel';
+            clearS();
+        }
+
+        // Aquí pégas la lógica de dibujo (mousedown, mousemove, mouseup) 
+        // usando la variable 'color' para el stroke o fill de las figuras.
     </script>
 </body>
 </html>
