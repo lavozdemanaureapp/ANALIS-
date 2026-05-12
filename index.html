@@ -2,14 +2,16 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>La Voz de Manaure - Táctica Pro v20.0</title>
+    <title>La Voz de Manaure - Táctica Pro v21.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root { --ama: #edb900; --negro: #1a1a1a; --verde: #27ae60; --rojo: #e74c3c; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--negro); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        .toolbar { background: var(--ama); padding: 8px; display: flex; justify-content: center; gap: 10px; align-items: center; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .toolbar { background: var(--ama); padding: 8px; display: flex; justify-content: center; gap: 8px; align-items: center; z-index: 100; flex-wrap: wrap; }
         .btn-t { background: black; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; }
         .btn-t.active { background: white; color: black; box-shadow: 0 0 10px white; }
+        .color-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid black; }
+        .color-dot.selected { border-color: white; transform: scale(1.2); }
         #main-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden; }
         #canvas-wrapper { position: relative; background: #000; border: 2px solid #555; }
         .modo-youtube { width: 854px; height: 480px; }
@@ -26,10 +28,17 @@
     <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
     <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 VIDEO</button>
     
+    <div style="display:flex; gap:5px; padding: 0 10px; border-left: 1px solid rgba(0,0,0,0.2)">
+        <div class="color-dot selected" style="background:#edb900" onclick="setColor('#edb900', this)"></div>
+        <div class="color-dot" style="background:#e74c3c" onclick="setColor('#e74c3c', this)"></div>
+        <div class="color-dot" style="background:#ffffff" onclick="setColor('#ffffff', this)"></div>
+    </div>
+
     <button id="btn-select" class="btn-t tool-btn active" onclick="setMode('select')">🖱️ MOVER</button>
     <button id="btn-pencil" class="btn-t tool-btn" onclick="setMode('pencil')">✏️ LIBRE</button>
     <button id="btn-circle" class="btn-t tool-btn" onclick="setMode('circle')">⭕ ANILLO</button>
     <button id="btn-arrow" class="btn-t tool-btn" onclick="setMode('arrow')">↗️ FLECHA</button>
+    <button id="btn-text" class="btn-t tool-btn" onclick="setMode('text')">📝 TEXTO</button>
 
     <button class="btn-t" style="background:var(--ama); color:black" onclick="takeSnapshot()">📸 FOTO</button>
     <button class="btn-t" style="background:var(--rojo)" onclick="deleteSelected()">🗑️ BORRAR</button>
@@ -53,6 +62,7 @@
     const video = document.getElementById('v-tachira');
     const canvas = new fabric.Canvas('tactic-canvas', { selection: true });
     let currentMode = 'select';
+    let currentColor = '#edb900';
 
     function handleFile(e) {
         const file = e.target.files[0];
@@ -61,17 +71,24 @@
 
     function togglePlay() { video.paused ? video.play() : video.pause(); document.getElementById('play-btn').innerText = video.paused ? "▶️" : "⏸️"; }
 
+    function setColor(color, el) {
+        currentColor = color;
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+        el.classList.add('selected');
+        if(canvas.isDrawingMode) canvas.freeDrawingBrush.color = color;
+        const active = canvas.getActiveObject();
+        if(active) { active.set({stroke: color, fill: active.type === 'i-text' ? color : active.fill}); canvas.renderAll(); }
+    }
+
     function setMode(m) {
         currentMode = m;
         canvas.isDrawingMode = (m === 'pencil');
         canvas.selection = (m === 'select');
         canvas.forEachObject(obj => obj.selectable = (m === 'select'));
-        
         if(canvas.isDrawingMode) {
             canvas.freeDrawingBrush.width = 5;
-            canvas.freeDrawingBrush.color = '#edb900';
+            canvas.freeDrawingBrush.color = currentColor;
         }
-
         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('btn-' + m).classList.add('active');
     }
@@ -81,7 +98,6 @@
         canvas.discardActiveObject().renderAll();
     }
 
-    // Atajos de Teclado
     window.addEventListener('keydown', (e) => {
         if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
         if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
@@ -97,28 +113,36 @@
         ctx.drawImage(video, 0, 0, temp.width, temp.height);
         ctx.drawImage(canvas.getElement(), 0, 0);
         const link = document.createElement('a');
-        link.download = 'analisis_manaure.png';
+        link.download = 'analisis_tachira.png';
         link.href = temp.toDataURL(); link.click();
     }
 
     let isDown, origX, origY, activeObj, head;
     canvas.on('mouse:down', function(o) {
-        if (currentMode === 'pencil' || currentMode === 'select') return;
-        isDown = true;
+        if (currentMode === 'select' || currentMode === 'pencil') return;
         let p = canvas.getPointer(o.e);
+        
+        if (currentMode === 'text') {
+            const text = new fabric.IText('CLIC AQUÍ', { left: p.x, top: p.y, fontSize: 20, fill: currentColor, fontFamily: 'Segoe UI', fontWeight: 'bold' });
+            canvas.add(text);
+            setMode('select');
+            return;
+        }
+
+        isDown = true;
         origX = p.x; origY = p.y;
         if (currentMode === 'circle') {
-            activeObj = new fabric.Circle({ left:origX, top:origY, radius:1, stroke:'#edb900', strokeWidth:5, fill:'rgba(237,185,0,0.2)', selectable: true });
+            activeObj = new fabric.Circle({ left:origX, top:origY, radius:1, stroke:currentColor, strokeWidth:5, fill:'transparent', selectable: true });
             canvas.add(activeObj);
         } else if (currentMode === 'arrow') {
-            activeObj = new fabric.Line([origX, origY, origX, origY], { stroke: 'white', strokeWidth: 6, selectable: true });
-            head = new fabric.Triangle({ width:20, height:20, fill:'white', originX:'center', originY:'center', selectable: false });
+            activeObj = new fabric.Line([origX, origY, origX, origY], { stroke: currentColor, strokeWidth: 6, selectable: true });
+            head = new fabric.Triangle({ width:20, height:20, fill:currentColor, originX:'center', originY:'center', selectable: false });
             canvas.add(activeObj, head);
         }
     });
 
     canvas.on('mouse:move', function(o) {
-        if (!isDown || currentMode === 'pencil' || currentMode === 'select') return;
+        if (!isDown) return;
         let p = canvas.getPointer(o.e);
         if (currentMode === 'circle') activeObj.set({ radius: Math.abs(origX - p.x) / 2 });
         else if (currentMode === 'arrow') {
@@ -129,7 +153,7 @@
         canvas.renderAll();
     });
 
-    canvas.on('mouse:up', () => { isDown = false; setMode('select'); });
+    canvas.on('mouse:up', () => { isDown = false; if(currentMode !== 'pencil') setMode('select'); });
 
     function resize(m) {
         const wrap = document.getElementById('canvas-wrapper');
