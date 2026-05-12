@@ -2,77 +2,118 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>La Voz de Manaure - PWA Táctica Pro</title>
+    <title>La Voz de Manaure - Analizador Táctico v3.0</title>
     <style>
-        :root { --ama: #edb900; --negro: #1a1a1a; --gris: #333; }
-        body { font-family: Arial; background: var(--negro); color: white; margin: 0; text-align: center; }
-
-        /* PANEL SUPERIOR */
-        .toolbar { background: var(--ama); padding: 10px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; sticky; top: 0; z-index: 100; }
-        .btn-t { background: black; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        :root { --ama: #edb900; --negro: #1a1a1a; --gris: #333; --rojo: #ff0000; --blanco: #ffffff; }
+        body { font-family: Arial; background: var(--negro); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* SELECTOR DE COLORES */
-        .color-picker { display: flex; gap: 5px; align-items: center; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 5px; }
-        .c-box { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
-        .c-box.active { border-color: black; }
+        .toolbar { background: var(--ama); padding: 10px; display: flex; justify-content: center; gap: 10px; align-items: center; z-index: 100; }
+        .btn-t { background: black; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        
+        .color-picker { display: flex; gap: 8px; background: rgba(0,0,0,0.2); padding: 5px 12px; border-radius: 20px; }
+        .c-box { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+        .c-box.active { border-color: black; transform: scale(1.1); }
 
-        /* AREA DE VIDEO Y DIBUJO */
-        #canvas-wrap { margin: 20px auto; background: black; position: relative; transition: 0.4s; border: 2px solid var(--gris); }
-        .modo-yt { width: 85%; aspect-ratio: 16 / 9; }
-        .modo-cel { width: 360px; height: 640px; border: 4px solid var(--ama) !important; }
+        #main-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #000; }
+        #canvas-area { position: relative; background: black; transition: 0.5s; border: 2px solid var(--gris); }
+        
+        .modo-youtube { width: 85%; aspect-ratio: 16 / 9; }
+        .modo-celular { width: 360px; height: 640px; border: 4px solid var(--ama) !important; }
 
-        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: crosshair; }
         video { width: 100%; height: 100%; object-fit: contain; }
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: crosshair; }
+
+        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.7); display: flex; padding: 10px; gap: 10px; z-index: 20; box-sizing: border-box; }
+        #seek-bar { flex-grow: 1; accent-color: var(--ama); }
     </style>
 </head>
 <body>
 
     <div class="toolbar">
+        <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
+        <button class="btn-t" style="background:#2ecc71" onclick="document.getElementById('file-input').click()">📁 AÑADIR VIDEO</button>
+        <button class="btn-t" id="play-btn" onclick="togglePlay()">▶️ PLAY</button>
+        
         <button class="btn-t" onclick="setTool('circle')">⭕ Círculo</button>
         <button class="btn-t" onclick="setTool('arrow')">↗️ Flecha</button>
         <button class="btn-t" onclick="setTool('double')">↔️ Doble</button>
-        <button class="btn-t" onclick="setTool('line')">➖ Línea</button>
-        <button class="btn-t" onclick="setTool('text')">TXT</button>
-
+        
         <div class="color-picker">
-            <div class="c-box active" style="background: white;" onclick="setColor('white', this)"></div>
-            <div class="c-box" style="background: #edb900;" onclick="setColor('#edb900', this)"></div>
-            <div class="c-box" style="background: #ff0000;" onclick="setColor('#ff0000', this)"></div>
+            <div class="c-box active" style="background: var(--blanco);" onclick="setColor('white', this)"></div>
+            <div class="c-box" style="background: var(--ama);" onclick="setColor('#edb900', this)"></div>
+            <div class="c-box" style="background: var(--rojo);" onclick="setColor('#ff0000', this)"></div>
         </div>
 
-        <button class="btn-t" style="background: red;" onclick="clearS()">🗑️ Limpiar</button>
-        |
-        <button class="btn-t" onclick="resz('yt')">📺 YouTube</button>
-        <button class="btn-t" onclick="resz('cel')">📱 Móvil</button>
+        <button class="btn-t" style="background: #e74c3c" onclick="clearCanvas()">🗑️ LIMPIAR</button>
+        <button class="btn-t" onclick="resize('youtube')">📺 YT</button>
+        <button class="btn-t" onclick="resize('celular')">📱 MÓVIL</button>
     </div>
 
-    <div id="canvas-wrap" class="modo-yt">
-        <video id="v" src="video_tachira.mp4" controls></video>
-        <svg id="s"></svg>
+    <div id="main-container">
+        <div id="canvas-area" class="modo-youtube">
+            <video id="v-tachira"></video>
+            <svg id="s-tactic"></svg>
+            <div class="video-controls">
+                <button onclick="togglePlay()">⏯️</button>
+                <input type="range" id="seek-bar" value="0">
+            </div>
+        </div>
     </div>
 
     <script>
+        const video = document.getElementById('v-tachira');
+        const svg = document.getElementById('s-tactic');
         let tool = 'arrow';
         let color = 'white';
 
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (file) { video.src = URL.createObjectURL(file); video.play(); }
+        }
+
+        function togglePlay() { video.paused ? video.play() : video.pause(); }
+
+        function resize(m) {
+            document.getElementById('canvas-area').className = (m === 'youtube') ? 'modo-youtube' : 'modo-celular';
+            clearCanvas();
+        }
+
         function setTool(t) { tool = t; }
-        
         function setColor(c, el) { 
             color = c; 
             document.querySelectorAll('.c-box').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
         }
 
-        function clearS() { document.getElementById('s').innerHTML = ''; }
+        function clearCanvas() { svg.innerHTML = ''; }
 
-        function resz(m) {
-            const w = document.getElementById('canvas-wrap');
-            w.className = (m === 'yt') ? 'modo-yt' : 'modo-cel';
-            clearS();
-        }
+        // Lógica de dibujo simplificada
+        let drawing = false;
+        let startPoint = {x:0, y:0};
 
-        // Aquí pégas la lógica de dibujo (mousedown, mousemove, mouseup) 
-        // usando la variable 'color' para el stroke o fill de las figuras.
+        svg.onmousedown = (e) => {
+            drawing = true;
+            const rect = svg.getBoundingClientRect();
+            startPoint = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        };
+
+        svg.onmouseup = (e) => {
+            if(!drawing) return;
+            const rect = svg.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            if(tool === 'circle') {
+                const r = Math.sqrt(Math.pow(endX - startPoint.x, 2) + Math.pow(endY - startPoint.y, 2));
+                svg.innerHTML += `<circle cx="${startPoint.x}" cy="${startPoint.y}" r="${r}" stroke="${color}" stroke-width="3" fill="none" />`;
+            } else if(tool === 'arrow') {
+                svg.innerHTML += `<line x1="${startPoint.x}" y1="${startPoint.y}" x2="${endX}" y2="${endY}" stroke="${color}" stroke-width="3" marker-end="url(#arrowhead)" />`;
+            }
+            drawing = false;
+        };
+
+        // Barra de progreso
+        video.ontimeupdate = () => { document.getElementById('seek-bar').value = (video.currentTime / video.duration) * 100; };
     </script>
 </body>
 </html>
