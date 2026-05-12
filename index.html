@@ -2,153 +2,159 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>La Voz de Manaure - Analizador Táctico v4.0</title>
+    <title>La Voz de Manaure - Analizador Táctico PRO v5.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
-        :root { --ama: #edb900; --negro: #1a1a1a; --gris: #333; --rojo: #ff0000; --blanco: #ffffff; --verde: #2ecc71; }
+        :root { --ama: #edb900; --negro: #1a1a1a; --gris: #333; --rojo: #ff0000; --blanco: #ffffff; }
         body { font-family: 'Segoe UI', Arial; background: var(--negro); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* BARRA SUPERIOR */
         .toolbar { background: var(--ama); padding: 10px; display: flex; justify-content: center; gap: 8px; align-items: center; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
-        .btn-t { background: black; color: white; border: 2px solid transparent; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
-        .btn-t:hover { background: var(--gris); }
+        .btn-t { background: black; color: white; border: 2px solid transparent; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
         .btn-t.active { background: white; color: black; border-color: black; }
 
-        /* COLORES */
-        .color-picker { display: flex; gap: 8px; background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 20px; border: 1px solid black; }
+        .color-picker { display: flex; gap: 8px; background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 20px; }
         .c-box { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid white; }
-        .c-box.active { border-color: black; transform: scale(1.2); box-shadow: 0 0 5px rgba(255,255,255,0.8); }
+        .c-box.active { border-color: black; transform: scale(1.2); }
 
-        /* AREA DE TRABAJO */
-        #main-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #222, #000); }
-        #canvas-area { position: relative; background: black; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1); border: 2px solid var(--gris); }
+        #main-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #000; position: relative; }
         
-        .modo-youtube { width: 85%; aspect-ratio: 16 / 9; }
+        /* Contenedor del lienzo y video */
+        #canvas-wrapper { position: relative; background: black; transition: 0.5s; border: 2px solid var(--gris); }
+        .modo-youtube { width: 1000px; height: 562px; }
         .modo-celular { width: 360px; height: 640px; border: 4px solid var(--ama) !important; }
 
-        video { width: 100%; height: 100%; object-fit: contain; }
-        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: crosshair; }
+        video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; pointer-events: none; }
+        .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10; }
 
-        /* CONTROLES DE VIDEO */
-        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); display: flex; padding: 12px; gap: 12px; z-index: 20; align-items: center; }
-        #seek-bar { flex-grow: 1; accent-color: var(--ama); cursor: pointer; }
-        .timer { font-family: monospace; font-size: 14px; min-width: 45px; }
+        .video-controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); display: flex; padding: 10px; gap: 10px; z-index: 20; align-items: center; box-sizing: border-box; }
+        #seek-bar { flex-grow: 1; accent-color: var(--ama); }
     </style>
 </head>
 <body>
 
     <div class="toolbar">
         <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
-        <button class="btn-t" style="background:var(--verde)" onclick="document.getElementById('file-input').click()">📁 VIDEO</button>
+        <button class="btn-t" style="background:#2ecc71" onclick="document.getElementById('file-input').click()">📁 VIDEO</button>
         
-        <div style="width:2px; height:20px; background:rgba(0,0,0,0.2)"></div>
-
-        <button id="btn-circle" class="btn-t tool-btn" onclick="setTool('circle')">⭕ CÍRCULO</button>
-        <button id="btn-arrow" class="btn-t tool-btn active" onclick="setTool('arrow')">↗️ FLECHA</button>
-        <button id="btn-double" class="btn-t tool-btn" onclick="setTool('double')">↔️ DOBLE</button>
-        <button id="btn-line" class="btn-t tool-btn" onclick="setTool('line')">➖ LÍNEA</button>
-
+        <button id="btn-select" class="btn-t" onclick="setMode('select')">🖱️ EDITAR</button>
+        <button id="btn-circle" class="btn-t" onclick="setMode('circle')">⭕ CÍRCULO</button>
+        <button id="btn-arrow" class="btn-t" onclick="setMode('arrow')">↗️ FLECHA</button>
+        
         <div class="color-picker">
             <div id="col-white" class="c-box active" style="background: var(--blanco);" onclick="setColor('white', 'col-white')"></div>
             <div id="col-ama" class="c-box" style="background: var(--ama);" onclick="setColor('#edb900', 'col-ama')"></div>
             <div id="col-rojo" class="c-box" style="background: var(--rojo);" onclick="setColor('#ff0000', 'col-rojo')"></div>
         </div>
 
-        <button class="btn-t" style="background: #e74c3c" onclick="clearCanvas()">🗑️ LIMPIAR</button>
+        <button class="btn-t" style="background: #e74c3c" onclick="deleteSelected()">🗑️ BORRAR</button>
+        |
         <button id="btn-yt" class="btn-t active" onclick="resize('youtube')">📺 YT</button>
         <button id="btn-cel" class="btn-t" onclick="resize('celular')">📱 MÓVIL</button>
     </div>
 
     <div id="main-container">
-        <div id="canvas-area" class="modo-youtube">
-            <video id="v-tachira"></video>
-            <svg id="s-tactic">
-                <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                        <polygon points="0 0, 10 3.5, 0 7" fill="context-stroke" />
-                    </marker>
-                </defs>
-            </svg>
+        <div id="canvas-wrapper" class="modo-youtube">
+            <video id="v-tachira" loop></video>
+            <canvas id="tactic-canvas"></canvas>
             
             <div class="video-controls">
-                <button class="btn-t" onclick="skip(-5)">⏪ 5s</button>
-                <button id="play-inner" class="btn-t" onclick="togglePlay()">▶️</button>
-                <button class="btn-t" onclick="skip(5)">5s ⏩</button>
+                <button class="btn-t" onclick="skip(-5)">⏪</button>
+                <button class="btn-t" onclick="togglePlay()" id="p-btn">▶️</button>
+                <button class="btn-t" onclick="skip(5)">⏩</button>
                 <input type="range" id="seek-bar" value="0">
-                <span class="timer" id="timer">00:00</span>
             </div>
         </div>
     </div>
 
     <script>
         const video = document.getElementById('v-tachira');
-        const svg = document.getElementById('s-tactic');
-        const playBtn = document.getElementById('play-inner');
-        let tool = 'arrow';
-        let color = 'white';
+        let canvas = new fabric.Canvas('tactic-canvas');
+        let currentMode = 'select';
+        let currentColor = 'white';
+
+        // Ajustar tamaño inicial del lienzo
+        function initCanvas() {
+            const wrap = document.getElementById('canvas-wrapper');
+            canvas.setWidth(wrap.clientWidth);
+            canvas.setHeight(wrap.clientHeight);
+        }
+        window.onload = initCanvas;
 
         function handleFile(e) {
             const file = e.target.files[0];
-            if (file) { video.src = URL.createObjectURL(file); video.play(); playBtn.innerText = "⏸️"; }
+            if (file) { video.src = URL.createObjectURL(file); video.play(); }
         }
 
-        function togglePlay() { 
-            if(video.paused) { video.play(); playBtn.innerText = "⏸️"; }
-            else { video.pause(); playBtn.innerText = "▶️"; }
-        }
-
-        function skip(time) { video.currentTime += time; }
+        function togglePlay() { video.paused ? video.play() : video.pause(); }
+        function skip(t) { video.currentTime += t; }
 
         function resize(m) {
-            document.getElementById('canvas-area').className = (m === 'youtube') ? 'modo-youtube' : 'modo-celular';
-            document.getElementById('btn-yt').classList.toggle('active', m === 'youtube');
-            document.getElementById('btn-cel').classList.toggle('active', m === 'celular');
-            clearCanvas();
+            const wrap = document.getElementById('canvas-wrapper');
+            wrap.className = (m === 'youtube') ? 'modo-youtube' : 'modo-celular';
+            setTimeout(() => {
+                canvas.setWidth(wrap.clientWidth);
+                canvas.setHeight(wrap.clientHeight);
+                canvas.renderAll();
+            }, 500);
         }
 
-        function setTool(t) { 
-            tool = t; 
-            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('btn-' + t).classList.add('active');
+        function setMode(m) {
+            currentMode = m;
+            canvas.isDrawingMode = false;
+            document.querySelectorAll('.btn-t').forEach(b => b.classList.remove('active'));
+            if(m !== 'select') {
+                canvas.discardActiveObject().renderAll();
+            }
         }
 
-        function setColor(c, id) { 
-            color = c; 
+        function setColor(c, id) {
+            currentColor = c;
             document.querySelectorAll('.c-box').forEach(b => b.classList.remove('active'));
             document.getElementById(id).classList.add('active');
         }
 
-        function clearCanvas() { svg.innerHTML = `<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="${color}" /></marker></defs>`; }
+        function deleteSelected() {
+            canvas.getActiveObjects().forEach(obj => canvas.remove(obj));
+            canvas.discardActiveObject().renderAll();
+        }
 
-        video.ontimeupdate = () => { 
-            document.getElementById('seek-bar').value = (video.currentTime / video.duration) * 100 || 0; 
-            let s = Math.floor(video.currentTime % 60).toString().padStart(2, '0');
-            let m = Math.floor(video.currentTime / 60).toString().padStart(2, '0');
-            document.getElementById('timer').innerText = `${m}:${s}`;
-        };
+        // LÓGICA DE DIBUJO DE OBJETOS
+        let isDown, origX, origY, activeObj;
 
-        // Lógica de dibujo táctico
-        let drawing = false; let start = {x:0, y:0};
-        svg.onmousedown = (e) => {
-            drawing = true;
-            const r = svg.getBoundingClientRect();
-            start = { x: e.clientX - r.left, y: e.clientY - r.top };
-        };
+        canvas.on('mouse:down', function(o) {
+            if (currentMode === 'select') return;
+            isDown = true;
+            var pointer = canvas.getPointer(o.e);
+            origX = pointer.x;
+            origY = pointer.y;
 
-        svg.onmouseup = (e) => {
-            if(!drawing) return;
-            const r = svg.getBoundingClientRect();
-            const endX = e.clientX - r.left; const endY = e.clientY - r.top;
-            
-            if(tool === 'circle') {
-                const dist = Math.sqrt(Math.pow(endX - start.x, 2) + Math.pow(endY - start.y, 2));
-                svg.innerHTML += `<circle cx="${start.x}" cy="${start.y}" r="${dist}" stroke="${color}" stroke-width="3" fill="none" />`;
-            } else if(tool === 'arrow') {
-                svg.innerHTML += `<line x1="${start.x}" y1="${start.y}" x2="${endX}" y2="${endY}" stroke="${color}" stroke-width="4" marker-end="url(#arrowhead)" />`;
-            } else if(tool === 'line') {
-                svg.innerHTML += `<line x1="${start.x}" y1="${start.y}" x2="${endX}" y2="${endY}" stroke="${color}" stroke-width="3" />`;
+            if (currentMode === 'circle') {
+                activeObj = new fabric.Circle({ left: origX, top: origY, radius: 1, stroke: currentColor, strokeWidth: 4, fill: 'transparent', selectable: true });
+            } else if (currentMode === 'arrow') {
+                activeObj = new fabric.Line([origX, origY, origX, origY], { stroke: currentColor, strokeWidth: 4, selectable: true });
             }
-            drawing = false;
-        };
+            canvas.add(activeObj);
+        });
+
+        canvas.on('mouse:move', function(o) {
+            if (!isDown || currentMode === 'select') return;
+            var pointer = canvas.getPointer(o.e);
+
+            if (currentMode === 'circle') {
+                var radius = Math.abs(origX - pointer.x) / 2;
+                activeObj.set({ radius: radius });
+            } else if (currentMode === 'arrow') {
+                activeObj.set({ x2: pointer.x, y2: pointer.y });
+            }
+            canvas.renderAll();
+        });
+
+        canvas.on('mouse:up', function() {
+            isDown = false;
+            setMode('select'); // Volver a modo edición automáticamente
+        });
+
+        video.ontimeupdate = () => { document.getElementById('seek-bar').value = (video.currentTime / video.duration) * 100 || 0; };
     </script>
 </body>
 </html>
