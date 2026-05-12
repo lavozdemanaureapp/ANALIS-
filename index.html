@@ -3,138 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Voz de Manaure - Panel de Análisis</title>
+    <title>La Voz de Manaure - PWA de Análisis Pro</title>
     <style>
-        :root {
-            --amarillo: #edb900;
-            --negro: #1a1a1a;
-            --gris: #333;
+        :root { --amarillo: #edb900; --negro: #1a1a1a; --gris: #333; }
+        body { font-family: 'Arial', sans-serif; background-color: var(--negro); color: white; margin: 0; overflow-x: hidden; }
+
+        /* PANEL SUPERIOR Y HERRAMIENTAS */
+        .toolbar {
+            background: var(--amarillo); padding: 10px; display: flex; 
+            justify-content: center; gap: 8px; flex-wrap: wrap; sticky; top: 0; z-index: 1000;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--negro);
-            color: white;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        .btn-tool {
+            background: black; color: white; border: none; padding: 8px 12px;
+            border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;
         }
 
-        /* PANEL DE PRODUCCIÓN (CONTROLES) */
-        .panel-superior {
-            width: 100%;
-            background-color: var(--amarillo);
-            color: black;
-            padding: 15px;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            position: sticky;
-            top: 0;
-            z-index: 100;
+        .btn-tool:hover { background: var(--gris); }
+
+        /* LIENZO DE GRABACIÓN */
+        #canvas-area {
+            margin: 20px auto; background: black; position: relative;
+            transition: all 0.4s ease; border: 2px solid var(--gris);
         }
 
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            text-transform: uppercase;
-            transition: 0.3s;
+        .modo-youtube { width: 80%; aspect-ratio: 16 / 9; }
+        .modo-celular { width: 360px; height: 640px; border: 4px solid var(--amarillo); }
+
+        /* CAPA DE DIBUJO (SVG) */
+        #drawing-svg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: all; cursor: crosshair;
         }
 
-        .btn-formato {
-            background-color: black;
-            color: var(--amarillo);
-        }
+        /* VIDEO PLAYER */
+        #video-player { width: 100%; height: 100%; object-fit: contain; }
 
-        .btn-formato:hover {
-            background-color: var(--gris);
+        /* BARRA DE CONTROL DE VIDEO */
+        .video-controls {
+            position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.7);
+            display: flex; gap: 10px; padding: 10px; z-index: 20;
         }
-
-        /* CONTENEDOR MAESTRO DEL VIDEO */
-        #contenedor-maestro {
-            margin: 40px auto;
-            background-color: black;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 2px solid var(--gris);
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* CLASES DE TAMAÑO */
-        .modo-youtube {
-            width: 90%;
-            max-width: 1280px;
-            aspect-ratio: 16 / 9;
-        }
-
-        .modo-celular {
-            width: 360px; /* Proporcional a 1080 */
-            height: 640px; /* Proporcional a 1920 */
-            border: 5px solid var(--amarillo) !important;
-        }
-
-        iframe, video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        .info-footer {
-            margin-top: 20px;
-            text-align: center;
-            color: var(--amarillo);
-        }
+        
+        input[type="range"] { flex-grow: 1; accent-color: var(--amarillo); }
     </style>
 </head>
 <body>
 
-    <div class="panel-superior">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <strong>LA VOZ DE MANAURE 92.3 FM</strong>
-        </div>
-        |
-        <span>FORMATO DE GRABACIÓN:</span>
-        <button class="btn-formato" onclick="ajustarLienzo('youtube')">YouTube (16:9)</button>
-        <button class="btn-formato" onclick="ajustarLienzo('celular')">Móvil (9:16)</button>
+    <div class="toolbar">
+        <button class="btn-tool" onclick="setTool('circle')">⭕ Círculo</button>
+        <button class="btn-tool" onclick="setTool('arrow')">↗️ Flecha</button>
+        <button class="btn-tool" onclick="setTool('double-arrow')">↔️ Doble Punta</button>
+        <button class="btn-tool" onclick="setTool('line')">➖ Línea</button>
+        <button class="btn-tool" onclick="setTool('rect')">🟦 Cuadro</button>
+        <button class="btn-tool" onclick="setTool('text')">TXT Texto</button>
+        <button class="btn-tool" onclick="setTool('triangle')">▲ Triángulo</button>
+        <button class="btn-tool" style="background: red;" onclick="clearCanvas()">🗑️ Limpiar</button>
+        <div style="border-left: 1px solid black; margin: 0 10px;"></div>
+        <button class="btn-tool" style="color: black; background: white;" onclick="resize('youtube')">📺 YouTube</button>
+        <button class="btn-tool" style="color: black; background: white;" onclick="resize('celular')">📱 Móvil</button>
     </div>
 
-    <div id="contenedor-maestro" class="modo-youtube">
-        <div id="player">
-            <p style="color: #666;">Cargando video de análisis...</p>
-        </div>
-    </div>
+    <div id="canvas-area" class="modo-youtube">
+        <video id="video-player" src="video_tachira.mp4"></video>
 
-    <div class="info-footer">
-        <p>Grabación lista para OBS • Versión de Análisis Táctico v2.0</p>
+        <svg id="drawing-svg">
+            </svg>
+
+        <div class="video-controls">
+            <button onclick="togglePlay()">⏯️</button>
+            <input type="range" id="seek-bar" value="0">
+            <span id="timer">00:00</span>
+        </div>
     </div>
 
     <script>
-        // Función para cambiar el tamaño del archivo único
-        function ajustarLienzo(tipo) {
-            const lienzo = document.getElementById('contenedor-maestro');
-            
-            if (tipo === 'youtube') {
-                lienzo.classList.remove('modo-celular');
-                lienzo.classList.add('modo-youtube');
-                console.log("Cambiado a 16:9 Horizontal");
+        let currentTool = 'arrow';
+        const svg = document.getElementById('drawing-svg');
+        const video = document.getElementById('video-player');
+
+        // FUNCIÓN DE CAMBIO DE TAMAÑO (TU PEDIDO)
+        function resize(mode) {
+            const area = document.getElementById('canvas-area');
+            if(mode === 'youtube') {
+                area.className = 'modo-youtube';
             } else {
-                lienzo.classList.remove('modo-youtube');
-                lienzo.classList.add('modo-celular');
-                console.log("Cambiado a 9:16 Vertical");
+                area.className = 'modo-celular';
             }
+            // Limpiamos al redimensionar para evitar que las flechas se desubiquen
+            clearCanvas();
         }
 
-        // Aquí iría tu lógica de Firebase que ya tenemos para sincronizar 
-        // los videos o las flechas si las manejas por base de datos.
-    </script>
+        // LÓGICA DE HERRAMIENTAS
+        function setTool(tool) { currentTool = tool; console.log("Herramienta: " + tool); }
 
+        function clearCanvas() { svg.innerHTML = ''; }
+
+        function togglePlay() {
+            if (video.paused) video.play();
+            else video.pause();
+        }
+
+        // Aquí conectaríamos los eventos mousedown/mousemove para dibujar 
+        // el círculo, flechas y demás sobre el SVG...
+        
+        // Actualizar barra de tiempo
+        video.addEventListener('timeupdate', () => {
+            const bar = document.getElementById('seek-bar');
+            const timer = document.getElementById('timer');
+            bar.value = (video.currentTime / video.duration) * 100;
+            timer.innerText = Math.floor(video.currentTime) + "s";
+        });
+    </script>
 </body>
 </html>
