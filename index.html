@@ -6,30 +6,34 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        /* ESTO PEGA EL VIDRIO AL VIDEO */
-        .editor-container { position: relative; width: 800px; height: 450px; background: #000; border: 2px solid #edb900; overflow: hidden; }
+        .editor-container { position: relative; width: 800px; height: 450px; background: #000; border: 2px solid #edb900; box-shadow: 0 0 20px rgba(237, 185, 0, 0.2); }
         video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10 !important; }
-        .controls { margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #333; padding: 15px; border-radius: 8px; }
-        button { padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
+        .controls { margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #333; padding: 15px; border-radius: 8px; width: 400px; }
+        button { padding: 12px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        button:active { transform: scale(0.95); }
         .btn-draw { background: #edb900; color: black; }
-        .btn-export { background: #28a745; color: white; grid-column: span 3; }
+        .btn-action { background: #555; color: white; }
+        .btn-export { background: #28a745; color: white; grid-column: span 3; font-size: 1.1em; }
     </style>
 </head>
 <body>
-    <h1>Analizador Táchira vs Carabobo</h1>
-    <input type="file" id="fileInput" accept="video/*" style="margin-bottom:10px;">
+    <h2 style="color:#edb900;">Analizador Táctico - La Voz de Manaure</h2>
+    <input type="file" id="fileInput" accept="video/*" style="margin-bottom:15px; background:#edb900; padding:5px; border-radius:5px;">
     
     <div class="editor-container">
-        <video id="videoPlayer" width="800" height="450"></video>
+        <video id="videoPlayer"></video>
         <canvas id="tacticCanvas"></canvas>
     </div>
 
     <div class="controls">
         <button class="btn-draw" onclick="setMode('arrow')">↗️ Flecha</button>
         <button class="btn-draw" onclick="setMode('circle')">⭕ Círculo</button>
-        <button class="btn-draw" onclick="canvas.clear()">🧹 Limpiar</button>
-        <button class="btn-export" onclick="exportImage()">📸 Descargar Jugada</button>
+        <button class="btn-draw" onclick="addText()">📝 Nombre</button>
+        <button class="btn-action" onclick="canvas.clear()">🧹 Limpiar</button>
+        <button class="btn-action" onclick="deleteSelected()">🗑️ Borrar</button>
+        <button class="btn-action" onclick="togglePlay()">⏯️ Play/Pausa</button>
+        <button class="btn-export" onclick="exportImage()">📸 Descargar Análisis</button>
     </div>
 
     <script>
@@ -37,6 +41,8 @@
         const canvas = new fabric.Canvas('tacticCanvas');
         canvas.setWidth(800); canvas.setHeight(450);
         let mode = null;
+        let isDrawing = false;
+        let line, head, circle;
 
         document.getElementById('fileInput').onchange = function(e) {
             const url = URL.createObjectURL(e.target.files[0]);
@@ -44,20 +50,68 @@
             video.play();
         };
 
-        function setMode(m) { mode = m; canvas.isDrawingMode = false; }
+        function togglePlay() {
+            if (video.paused) video.play();
+            else video.pause();
+        }
+
+        function setMode(m) { 
+            mode = m; 
+            canvas.isDrawingMode = false;
+            video.pause(); // Se detiene al elegir herramienta
+        }
+
+        function addText() {
+            video.pause();
+            const text = new fabric.IText('Nombre', { 
+                left: 100, top: 100, fontSize: 20, fill: '#fff', backgroundColor: 'rgba(0,0,0,0.7)', padding: 5
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            mode = null;
+        }
+
+        function deleteSelected() {
+            canvas.getActiveObjects().forEach(obj => canvas.remove(obj));
+            canvas.discardActiveObject().renderAll();
+        }
 
         canvas.on('mouse:down', function(o) {
-            if (!mode) return;
-            video.pause();
+            if (!mode) { togglePlay(); return; }
+            isDrawing = true;
             const pointer = canvas.getPointer(o.e);
+
             if (mode === 'arrow') {
-                const line = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], {
-                    stroke: '#edb900', strokeWidth: 4, originX: 'center', originY: 'center'
+                line = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+                    stroke: '#edb900', strokeWidth: 4, originX: 'center', originY: 'center', selectable: true
                 });
-                canvas.add(line);
-                canvas.setActiveObject(line);
+                head = new fabric.Triangle({
+                    width: 15, height: 15, fill: '#edb900', left: pointer.x, top: pointer.y, originX: 'center', originY: 'center', selectable: true
+                });
+                canvas.add(line, head);
+            } else if (mode === 'circle') {
+                circle = new fabric.Circle({
+                    left: pointer.x, top: pointer.y, radius: 1, fill: 'transparent', stroke: '#edb900', strokeWidth: 3, originX: 'center', originY: 'center'
+                });
+                canvas.add(circle);
             }
         });
+
+        canvas.on('mouse:move', function(o) {
+            if (!isDrawing || !mode) return;
+            const pointer = canvas.getPointer(o.e);
+
+            if (mode === 'arrow') {
+                line.set({ x2: pointer.x, y2: pointer.y });
+                const angle = Math.atan2(pointer.y - line.y1, pointer.x - line.x1) * 180 / Math.PI;
+                head.set({ left: pointer.x, top: pointer.y, angle: angle + 90 });
+            } else if (mode === 'circle') {
+                circle.set({ radius: Math.abs(pointer.x - circle.left) });
+            }
+            canvas.renderAll();
+        });
+
+        canvas.on('mouse:up', () => { isDrawing = false; mode = null; });
 
         function exportImage() {
             const tempCanvas = document.createElement('canvas');
@@ -66,8 +120,8 @@
             ctx.drawImage(video, 0, 0, 800, 450);
             ctx.drawImage(canvas.getElement(), 0, 0, 800, 450);
             const link = document.createElement('a');
-            link.download = 'analisis.png';
-            link.href = tempCanvas.toDataURL();
+            link.download = 'analisis_manaure.png';
+            link.href = tempCanvas.toDataURL('image/png');
             link.click();
         }
     </script>
