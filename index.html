@@ -2,116 +2,134 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Manaure Táctica Final v37.0</title>
+    <title>Analizador Táctico Manaure v40.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root { --ama: #edb900; --negro: #111; }
-        body { font-family: 'Segoe UI', sans-serif; background: #000; color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .toolbar { background: var(--negro); padding: 10px; display: flex; justify-content: center; gap: 8px; border-bottom: 2px solid var(--ama); flex-wrap: wrap; }
-        .btn-t { background: #222; color: white; border: 1px solid #444; padding: 6px 10px; cursor: pointer; font-size: 11px; font-weight: bold; border-radius: 4px; }
-        .btn-t.active { background: var(--ama); color: black; }
-        #video-container { position: relative; width: 854px; height: 480px; margin: auto; background: #000; border: 2px solid #333; }
-        video { position: absolute; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #000; color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        .toolbar { background: var(--negro); padding: 12px; display: flex; justify-content: center; gap: 10px; align-items: center; border-bottom: 2px solid var(--ama); flex-wrap: wrap; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .btn-t { background: #222; color: white; border: 1px solid #444; padding: 8px 14px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; transition: 0.3s; }
+        .btn-t:hover { border-color: var(--ama); }
+        .btn-t.active { background: var(--ama); color: black; box-shadow: 0 0 10px var(--ama); }
+        
+        #video-container { position: relative; width: 854px; height: 480px; margin: auto; background: #000; border: 4px solid #222; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        video { position: absolute; width: 100%; height: 100%; z-index: 1; pointer-events: none; object-fit: contain; }
         .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10; }
-        .controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); display: flex; padding: 10px; gap: 10px; z-index: 100; align-items: center; box-sizing: border-box; }
-        #seek-bar { flex-grow: 1; accent-color: var(--ama); cursor: pointer; }
-        .color-p { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
+        
+        .controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); display: flex; padding: 10px; gap: 15px; z-index: 100; align-items: center; box-sizing: border-box; }
+        input[type=range] { flex-grow: 1; accent-color: var(--ama); cursor: pointer; }
+        
+        .color-p { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; transition: 0.2s; }
+        .color-p:hover { transform: scale(1.2); }
     </style>
 </head>
 <body>
 
 <div class="toolbar">
-    <input type="file" id="f" style="display:none" onchange="h(event)">
-    <button class="btn-t" style="background:#27ae60" onclick="document.getElementById('f').click()">📁 VIDEO</button>
-    <button id="b-p" class="btn-t tool-btn" onclick="sm('player')">👤 JUGADOR</button>
-    <button id="b-a" class="btn-t tool-btn" onclick="sm('arrow')">↗️ FLECHA</button>
-    <button id="b-z" class="btn-t tool-btn" onclick="sm('area')">🟥 ZONA</button>
-    <div style="display:flex; gap:5px; margin: 0 10px;">
-        <div class="color-p" style="background:#e74c3c" onclick="sc('#e74c3c')"></div>
-        <div class="color-p" style="background:#edb900" onclick="sc('#edb900')"></div>
-        <div class="color-p" style="background:#ffffff" onclick="sc('#ffffff')"></div>
+    <input type="file" id="f-in" style="display:none" onchange="h_load(event)">
+    <button class="btn-t" style="background:#27ae60; border:none" onclick="document.getElementById('f-in').click()">📁 VIDEO</button>
+    
+    <button id="b-sel" class="btn-t tool-btn active" onclick="setM('select')">🖱️ MOVER</button>
+    <button id="b-pla" class="btn-t tool-btn" onclick="setM('player')">👤 JUGADOR</button>
+    <button id="b-arr" class="btn-t tool-btn" onclick="setM('arrow')">↗️ FLECHA</button>
+    <button id="b-tri" class="btn-t tool-btn" onclick="setM('triangle')">🔺 TRIÁNGULO</button>
+    <button id="b-rec" class="btn-t tool-btn" onclick="setM('area')">🟥 ZONA</button>
+
+    <div style="display:flex; gap:8px; margin: 0 10px; padding: 0 10px; border-left: 1px solid #444; border-right: 1px solid #444;">
+        <div class="color-p" style="background:#e74c3c" onclick="setCol('#e74c3c')"></div>
+        <div class="color-p" style="background:#edb900" onclick="setCol('#edb900')"></div>
+        <div class="color-p" style="background:#ffffff" onclick="setCol('#ffffff')"></div>
     </div>
-    <button id="rec" class="btn-t" style="background:#c0392b" onclick="tr()">🔴 GRABAR</button>
-    <button class="btn-t" onclick="canvas.clear()">🗑️ LIMPIAR</button>
+
+    <button id="rec-btn" class="btn-t" style="background:#c0392b" onclick="toggleR()">🔴 GRABAR</button>
+    <button class="btn-t" style="background:#444" onclick="canvas.clear()">🗑️ LIMPIAR</button>
 </div>
 
-<div id="video-container">
-    <video id="v" muted playsinline></video>
-    <canvas id="c"></canvas>
-    <div class="controls">
-        <button class="btn-t" onclick="v.paused?v.play():v.pause()">▶️/⏸️</button>
-        <button class="btn-t" onclick="v.currentTime -= 5">⏪ -5s</button>
-        <input type="range" id="seek-bar" value="0" min="0" step="0.1">
-        <button class="btn-t" onclick="v.currentTime += 5">5s + ⏩</button>
-        <select class="btn-t" onchange="v.playbackRate = this.value" style="background:#000">
-            <option value="1">1x</option>
-            <option value="0.5">0.5x</option>
-            <option value="0.25">0.25x</option>
-        </select>
+<div style="flex-grow:1; display:flex;">
+    <div id="video-container">
+        <video id="v-main" muted playsinline></video>
+        <canvas id="t-canvas"></canvas>
+        <div class="controls">
+            <button class="btn-t" onclick="v.paused ? v.play() : v.pause()">▶️/⏸️</button>
+            <button class="btn-t" onclick="v.currentTime -= 2">⏪</button>
+            <input type="range" id="seek" value="0" min="0" step="0.1">
+            <button class="btn-t" onclick="v.currentTime += 2">⏩</button>
+            <select class="btn-t" onchange="v.playbackRate = this.value" style="background:black">
+                <option value="1">1x</option>
+                <option value="0.5">0.5x</option>
+                <option value="0.25">0.25x</option>
+            </select>
+        </div>
     </div>
 </div>
 
 <script>
-    const v = document.getElementById('v'), canvas = new fabric.Canvas('c', { width: 854, height: 480 }), seek = document.getElementById('seek-bar');
-    let mode = 'select', isDown, x, y, active, rec, chunks = [], curS = '#edb900';
+    const v = document.getElementById('v-main'), canvas = new fabric.Canvas('t-canvas', { width: 854, height: 480 }), seek = document.getElementById('seek');
+    let mode = 'select', isDown, x, y, active, rec, chunks = [], curC = '#edb900';
 
-    function h(e) { const file = e.target.files[0]; if(file) v.src = URL.createObjectURL(file); }
-    function sm(m) { mode = m; canvas.discardActiveObject().renderAll(); }
-    function sc(c) { curS = c; }
+    function h_load(e) { const f = e.target.files[0]; if(f) { v.src = URL.createObjectURL(f); v.pause(); canvas.clear(); } }
+    function setM(m) { mode = m; document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active')); if(m!=='select') document.getElementById('b-'+m.substring(0,3)).classList.add('active'); canvas.discardActiveObject().renderAll(); }
+    function setCol(c) { curC = c; }
 
-    // Actualizar barra de tiempo
     v.addEventListener('loadedmetadata', () => { seek.max = v.duration; });
-    v.addEventListener('timeupdate', () => { if (!isDown) seek.value = v.currentTime; });
+    v.addEventListener('timeupdate', () => { if(!isDown) seek.value = v.currentTime; });
     seek.addEventListener('input', () => { v.currentTime = seek.value; });
 
     canvas.on('mouse:down', (o) => {
         if(mode === 'select') return;
         isDown = true; let p = canvas.getPointer(o.e); x = p.x; y = p.y;
+
         if(mode === 'player') {
-            let cir = new fabric.Circle({ radius: 25, stroke: curS, strokeWidth: 3, fill: 'transparent', originX: 'center' });
-            let box = new fabric.Rect({ width: 90, height: 22, fill: 'rgba(0,0,0,0.8)', rx: 4, ry: 4, originX: 'center' });
-            let txt = new fabric.IText('NOMBRE', { fontSize: 13, fill: 'white', originX: 'center', top: 4, fontFamily: 'Arial' });
-            let tag = new fabric.Group([box, txt], { top: 40, originX: 'center' }); // SEPARADO
-            canvas.add(new fabric.Group([cir, tag], { left: x, top: y, originX: 'center', originY: 'center' }));
-            mode = 'select';
+            let cir = new fabric.Circle({ radius: 26, stroke: curC, strokeWidth: 3, fill: 'transparent', originX: 'center', originY: 'center' });
+            let box = new fabric.Rect({ width: 100, height: 24, fill: 'rgba(0,0,0,0.7)', rx: 5, ry: 5, originX: 'center', originY: 'center' });
+            let txt = new fabric.IText('NOMBRE', { fontSize: 14, fill: 'white', originX: 'center', originY: 'center', fontFamily: 'Arial Bold' });
+            let label = new fabric.Group([box, txt], { top: 45, originX: 'center', originY: 'center' });
+            let player = new fabric.Group([cir, label], { left: x, top: y, originX: 'center', originY: 'center' });
+            canvas.add(player);
+            setM('select');
+        } else if(mode === 'arrow') {
+            let l = new fabric.Line([x, y, x, y], { stroke: curC, strokeWidth: 4 });
+            let h = new fabric.Triangle({ width: 15, height: 15, fill: curC, originX: 'center', originY: 'center', selectable: false });
+            active = new fabric.Group([l, h], { selectable: true });
+            canvas.add(active);
+        } else if(mode === 'triangle') {
+            active = new fabric.Triangle({ left: x, top: y, width: 1, height: 1, fill: curC+'33', stroke: curC, strokeWidth: 2 });
+            canvas.add(active);
         } else if(mode === 'area') {
-            active = new fabric.Rect({ left: x, top: y, width: 1, height: 1, fill: curS+'33', stroke: curS, strokeWidth: 2 });
+            active = new fabric.Rect({ left: x, top: y, width: 1, height: 1, fill: curC+'33', stroke: curC, strokeWidth: 2 });
             canvas.add(active);
         }
     });
 
     canvas.on('mouse:move', (o) => {
-        if(!isDown || mode !== 'area') return;
+        if(!isDown || mode === 'select' || mode === 'player') return;
         let p = canvas.getPointer(o.e);
-        active.set({ width: Math.abs(x - p.x), height: Math.abs(y - p.y), left: Math.min(x, p.x), top: Math.min(y, p.y) });
+        if(mode === 'arrow') {
+            let l = active.item(0); l.set({ x2: p.x, y2: p.y });
+            let ang = Math.atan2(p.y - y, p.x - x) * 180 / Math.PI;
+            active.item(1).set({ left: p.x, top: p.y, angle: ang + 90 });
+            canvas.remove(active); active = new fabric.Group([l, active.item(1)], { selectable: true }); canvas.add(active);
+        } else {
+            active.set({ width: Math.abs(x - p.x), height: Math.abs(y - p.y), left: Math.min(x, p.x), top: Math.min(y, p.y) });
+        }
         canvas.renderAll();
     });
 
     canvas.on('mouse:up', () => isDown = false);
 
-    async function tr() {
-        const btn = document.getElementById('rec');
-        if (rec && rec.state === "recording") {
-            rec.stop(); btn.innerText = "🔴 GRABAR";
-        } else {
-            chunks = [];
-            const sCanvas = document.createElement('canvas'); sCanvas.width = 854; sCanvas.height = 480;
-            const ctx = sCanvas.getContext('2d');
-            function draw() {
-                if (rec && rec.state === "recording") {
-                    ctx.drawImage(v, 0, 0, 854, 480); ctx.drawImage(canvas.getElement(), 0, 0);
-                    requestAnimationFrame(draw);
-                }
-            }
-            const stream = sCanvas.captureStream(30);
+    async function toggleR() {
+        const b = document.getElementById('rec-btn');
+        if(rec && rec.state === "recording") { rec.stop(); b.innerText = "🔴 GRABAR"; b.style.background = "#c0392b"; }
+        else {
+            chunks = []; const sC = document.createElement('canvas'); sC.width = 854; sC.height = 480;
+            const ctx = sC.getContext('2d');
+            function draw() { if(rec && rec.state === "recording") { ctx.drawImage(v,0,0,854,480); ctx.drawImage(canvas.getElement(),0,0); requestAnimationFrame(draw); } }
+            const stream = sC.captureStream(30);
             rec = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
             rec.ondataavailable = e => chunks.push(e.data);
-            rec.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
-                a.download = 'analisis_profesional.webm'; a.click();
-            };
-            draw(); rec.start(); btn.innerText = "⏹️ DETENER";
+            rec.onstop = () => { const blob = new Blob(chunks, { type: 'video/webm' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'analisis_manaure.webm'; a.click(); };
+            draw(); rec.start(); b.innerText = "⏹️ STOP"; b.style.background = "#222";
         }
     }
 </script>
