@@ -2,37 +2,60 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>La Voz de Manaure - Analizador PRO v32.0</title>
+    <title>La Voz de Manaure - Táctica Aurinegra v35.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
-        :root { --ama: #edb900; --negro: #1a1a1a; --rojo: rgba(231, 76, 60, 0.4); }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--negro); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .toolbar { background: var(--ama); padding: 10px; display: flex; justify-content: center; gap: 10px; align-items: center; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .btn-t { background: black; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.3s; }
-        .btn-t.active { background: white; color: black; box-shadow: 0 0 15px white; }
-        .btn-rec { background: #e74c3c; animation: pulse 2s infinite; display: none; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        :root { --ama: #edb900; --negro: #111; --rojo: #e74c3c; }
+        body { font-family: 'Segoe UI', sans-serif; background: #000; color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        #video-container { position: relative; width: 854px; height: 480px; background: #000; margin: auto; border: 4px solid #333; }
+        /* Toolbar Superior */
+        .toolbar { background: var(--negro); padding: 10px; display: flex; justify-content: center; gap: 8px; align-items: center; z-index: 100; border-bottom: 2px solid var(--ama); flex-wrap: wrap; }
+        .btn-t { background: black; color: white; border: 1px solid #333; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; transition: 0.3s; }
+        .btn-t.active { background: var(--ama); color: black; border-color: white; box-shadow: 0 0 10px var(--ama); }
+        .btn-rec { background: #c0392b; animation: pulse 2s infinite; }
+        
+        /* Contenedores de Figuras y Colores */
+        .tools-group, .colors-group { display: flex; gap: 4px; border-left: 1px solid #333; padding-left: 8px; }
+        .color-picker { width: 25px; height: 25px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; transition: 0.2s; }
+        .color-picker.active { transform: scale(1.2); box-shadow: 0 0 10px #fff; }
+        
+        /* Área de Video y Canvas */
+        #video-container { position: relative; width: 854px; height: 480px; background: #000; margin: auto; border: 3px solid #222; }
         video { position: absolute; width: 100%; height: 100%; z-index: 1; object-fit: contain; pointer-events: none; }
         .canvas-container { position: absolute !important; top: 0; left: 0; z-index: 10; }
         
-        .controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); display: flex; padding: 10px; gap: 15px; z-index: 100; align-items: center; box-sizing: border-box; }
+        /* Controles de Video Inferiores */
+        .controls { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); display: flex; padding: 8px; gap: 10px; z-index: 100; align-items: center; box-sizing: border-box; }
         input[type=range] { flex-grow: 1; accent-color: var(--ama); }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
 <div class="toolbar">
     <input type="file" id="file-input" accept="video/*" style="display:none" onchange="handleFile(event)">
-    <button class="btn-t" style="background:#27ae60" onclick="document.getElementById('file-input').click()">📁 CARGAR JUGADA</button>
+    <button class="btn-t" style="background:#27ae60; border:none" onclick="document.getElementById('file-input').click()">📁 VIDEO</button>
     
-    <button id="btn-select" class="btn-t tool-btn active" onclick="setMode('select')">🖱️ MOVER</button>
-    <button id="btn-arrow" class="btn-t tool-btn" onclick="setMode('arrow')">↗️ FLECHA</button>
-    <button id="btn-area" class="btn-t tool-btn" onclick="setMode('area')">🟥 ZONA ROJA</button>
-    <button id="btn-player" class="btn-t tool-btn" onclick="setMode('player')">👤 JUGADOR</button>
+    <div class="tools-group">
+        <button id="btn-select" class="btn-t tool-btn active" onclick="setMode('select')">🖱️ Mover</button>
+        <button id="btn-player" class="btn-t tool-btn" onclick="setMode('player')">👤 Jugador</button>
+        <button id="btn-arrow" class="btn-t tool-btn" onclick="setMode('arrow')">↗️ Flecha</button>
+        <button id="btn-line" class="btn-t tool-btn" onclick="setMode('line')">📏 Línea</button>
+        <button id="btn-triangle" class="btn-t tool-btn" onclick="setMode('triangle')">🔺 Triángulo</button>
+        <button id="btn-area" class="btn-t tool-btn" onclick="setMode('area')">🟥 Zona</button>
+    </div>
 
-    <button id="rec-btn" class="btn-t" style="background:#c0392b" onclick="toggleRecording()">🔴 GRABAR ANALISIS</button>
+    <div class="colors-group">
+        <div class="color-picker active" style="background:#e74c3c" onclick="setColor('#e74c3c', this)"></div>
+        <div class="color-picker" style="background:#edb900" onclick="setColor('#edb900', this)"></div>
+        <div class="color-picker" style="background:#2ecc71" onclick="setColor('#2ecc71', this)"></div>
+        <div class="color-picker" style="background:#3498db" onclick="setColor('#3498db', this)"></div>
+        <div class="color-picker" style="background:#ffffff" onclick="setColor('#ffffff', this)"></div>
+        <div class="color-picker" style="background:#000000" onclick="setColor('#000000', this)"></div>
+    </div>
+    
+    <button id="btn-dash" class="btn-t" onclick="toggleDash()">〰️ Trazo</button>
+    <button id="rec-btn" class="btn-t btn-rec" onclick="toggleRecording()">🔴 GRABAR</button>
     <button class="btn-t" style="background:#444" onclick="deleteSelected()">🗑️ BORRAR</button>
 </div>
 
@@ -42,9 +65,9 @@
         <canvas id="t-canvas"></canvas>
         <div class="controls">
             <button class="btn-t" onclick="togglePlay()" id="play-p">▶️</button>
+            <input type="range" id="seek" value="0">
             <button class="btn-t" onclick="v.playbackRate = 0.25">0.25x</button>
             <button class="btn-t" onclick="v.playbackRate = 1">1x</button>
-            <input type="range" id="seek" value="0">
         </div>
     </div>
 </div>
@@ -53,68 +76,57 @@
     const v = document.getElementById('v-main');
     const canvas = new fabric.Canvas('t-canvas', { width: 854, height: 480 });
     let mode = 'select', isDown, x, y, activeObj, head, recorder, chunks = [];
+    let currentFill = 'rgba(231, 76, 60, 0.2)', currentStroke = '#e74c3c', isDashed = false;
 
-    function handleFile(e) {
-        const file = e.target.files[0];
-        if (file) { v.src = URL.createObjectURL(file); v.pause(); canvas.clear(); }
-    }
-
+    function handleFile(e) { const file = e.target.files[0]; if (file) { v.src = URL.createObjectURL(file); v.pause(); canvas.clear(); } }
     function togglePlay() { v.paused ? v.play() : v.pause(); }
+    function deleteSelected() { canvas.getActiveObjects().forEach(obj => canvas.remove(obj)); canvas.discardActiveObject().renderAll(); }
 
     function setMode(m) {
         mode = m;
         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('btn-' + m).classList.add('active');
-    }
-
-    function deleteSelected() {
-        canvas.getActiveObjects().forEach(obj => canvas.remove(obj));
         canvas.discardActiveObject().renderAll();
     }
 
-    // LÓGICA DE GRABACIÓN
-    async function toggleRecording() {
-        const btn = document.getElementById('rec-btn');
-        if (recorder && recorder.state === "recording") {
-            recorder.stop();
-            btn.innerText = "🔴 GRABAR ANALISIS";
-            btn.style.background = "#c0392b";
-        } else {
-            chunks = [];
-            // Truco técnico: capturamos el video y el canvas juntos
-            const stream = canvas.getElement().captureStream(30);
-            recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-            recorder.ondataavailable = e => chunks.push(e.data);
-            recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = 'analisis_manaure.webm'; a.click();
-            };
-            recorder.start();
-            btn.innerText = "⏹️ DETENER Y DESCARGAR";
-            btn.style.background = "#222";
-        }
+    function setColor(hex, el) {
+        currentStroke = hex;
+        currentFill = hex + '33'; // 20% opacidad para zonas
+        document.querySelectorAll('.color-picker').forEach(p => p.classList.remove('active'));
+        el.classList.add('active');
     }
 
-    // DIBUJO DE FIGURAS TIPO BRUNO CATIVIOLA
+    function toggleDash() {
+        isDashed = !isDashed;
+        document.getElementById('btn-dash').classList.toggle('active', isDashed);
+    }
+
+    // --- LÓGICA DE DIBUJO ---
     canvas.on('mouse:down', function(o) {
         if (mode === 'select') return;
-        let p = canvas.getPointer(o.e);
-        isDown = true; x = p.x; y = p.y;
+        isDown = true; let p = canvas.getPointer(o.e); x = p.x; y = p.y;
+        let dashOpt = isDashed ? [10, 5] : null;
 
-        if (mode === 'area') {
-            activeObj = new fabric.Rect({ left: x, top: y, width: 1, height: 1, fill: 'rgba(231, 76, 60, 0.3)', stroke: '#e74c3c', strokeWidth: 2 });
-            canvas.add(activeObj);
-        } else if (mode === 'player') {
-            let c = new fabric.Circle({ radius: 25, stroke: '#edb900', strokeWidth: 3, fill: 'transparent', originX: 'center' });
-            let t = new fabric.IText('NOMBRE', { fontSize: 16, fill: 'white', backgroundColor: 'black', top: 30, originX: 'center', fontFamily: 'Arial' });
-            let g = new fabric.Group([c, t], { left: x, top: y, originX: 'center', originY: 'center' });
+        if (mode === 'player') {
+            let c = new fabric.Circle({ radius: 25, stroke: currentStroke, strokeWidth: 3, fill: 'transparent', originX: 'center' });
+            let t = new fabric.IText('JUGADOR', { fontSize: 14, fill: 'white', originX: 'center', fontFamily: 'Arial Bold' });
+            let b = new fabric.Rect({ width: 80, height: 20, fill: 'rgba(0,0,0,0.6)', rx: 3, ry: 3, originX: 'center' }); // Fondo sombreado
+            let nameTag = new fabric.Group([b, t], { top: 35, originX: 'center' });
+            let g = new fabric.Group([c, nameTag], { left: x, top: y, originX: 'center', originY: 'center', transparentCorners: false });
             canvas.add(g);
             setMode('select');
+        } else if (mode === 'area') {
+            activeObj = new fabric.Rect({ left: x, top: y, width: 1, height: 1, fill: currentFill, stroke: currentStroke, strokeWidth: 2, strokeDashArray: dashOpt });
+            canvas.add(activeObj);
+        } else if (mode === 'triangle') {
+            activeObj = new fabric.Triangle({ left: x, top: y, width: 1, height: 1, fill: currentFill, stroke: currentStroke, strokeWidth: 2, strokeDashArray: dashOpt });
+            canvas.add(activeObj);
+        } else if (mode === 'line') {
+            activeObj = new fabric.Line([x, y, x, y], { stroke: currentStroke, strokeWidth: 4, strokeDashArray: dashOpt });
+            canvas.add(activeObj);
         } else if (mode === 'arrow') {
-            let l = new fabric.Line([x, y, x, y], { stroke: '#edb900', strokeWidth: 5 });
-            head = new fabric.Triangle({ width: 15, height: 15, fill: '#edb900', originX: 'center', originY: 'center' });
+            let l = new fabric.Line([x, y, x, y], { stroke: currentStroke, strokeWidth: 5, strokeDashArray: dashOpt });
+            head = new fabric.Triangle({ width: 15, height: 15, fill: currentStroke, originX: 'center', originY: 'center', selectable: false });
             activeObj = new fabric.Group([l, head], { selectable: true });
             canvas.add(activeObj);
         }
@@ -123,22 +135,53 @@
     canvas.on('mouse:move', function(o) {
         if (!isDown || mode === 'select') return;
         let p = canvas.getPointer(o.e);
-        if (mode === 'area') {
-            activeObj.set({ width: Math.abs(x - p.x), height: Math.abs(y - p.y) });
+        if (mode === 'area' || mode === 'triangle') {
+            activeObj.set({ width: Math.abs(x - p.x), height: Math.abs(y - p.y), left: Math.min(x, p.x), top: Math.min(y, p.y) });
+        } else if (mode === 'line') {
+            activeObj.set({ x2: p.x, y2: p.y });
         } else if (mode === 'arrow') {
-            let l = activeObj.item(0);
-            l.set({ x2: p.x, y2: p.y });
+            let l = activeObj.item(0); l.set({ x2: p.x, y2: p.y });
             let ang = Math.atan2(p.y - y, p.x - x) * 180 / Math.PI;
             head.set({ left: p.x, top: p.y, angle: ang + 90 });
-            canvas.remove(activeObj);
-            activeObj = new fabric.Group([l, head], { selectable: true });
-            canvas.add(activeObj);
+            canvas.remove(activeObj); activeObj = new fabric.Group([l, head], { selectable: true }); canvas.add(activeObj);
         }
         canvas.renderAll();
     });
 
     canvas.on('mouse:up', () => isDown = false);
     v.ontimeupdate = () => { document.getElementById('seek').value = (v.currentTime / v.duration) * 100 || 0; };
+
+    // --- LÓGICA DE GRABACIÓN (FUSIÓN VIDEO+CANVAS) ---
+    async function toggleRecording() {
+        const btn = document.getElementById('rec-btn');
+        if (recorder && recorder.state === "recording") {
+            recorder.stop();
+            btn.innerText = "🔴 GRABAR"; btn.style.background = "#c0392b";
+        } else {
+            chunks = [];
+            const streamCanvas = document.createElement('canvas');
+            streamCanvas.width = 854; streamCanvas.height = 480;
+            const ctx = streamCanvas.getContext('2d');
+
+            function renderFrame() {
+                if (recorder && recorder.state === "recording") {
+                    ctx.drawImage(v, 0, 0, 854, 480); ctx.drawImage(canvas.getElement(), 0, 0);
+                    requestAnimationFrame(renderFrame);
+                }
+            }
+
+            const stream = streamCanvas.captureStream(30);
+            recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'ANALISIS_MANAURE_V35.webm'; a.click();
+            };
+            renderFrame(); recorder.start();
+            btn.innerText = "⏹️ DETENER"; btn.style.background = "#222";
+        }
+    }
 </script>
 </body>
 </html>
